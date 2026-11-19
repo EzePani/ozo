@@ -1,0 +1,6 @@
+node_modules
+dist
+dev-dist
+.claude
+SPEC.md
+PROMPT_FABLE.md

@@ -33,7 +33,7 @@ export interface Goal {
   id: number; scope: 'month' | 'routine'; ref: string // "YYYY-MM" o id de rutina
   text: string; exerciseId?: number; metric?: Field; target?: number; month?: string
 }
-export interface Settings { id: 1; theme: Theme; customKinds: string[]; routineTypes: string[] }
+export interface Settings { id: 1; theme: Theme; customKinds: string[]; routineTypes: string[]; calTime?: string; calMinutes?: number }
 
 export interface Data {
   routines: Routine[]; blocks: Block[]; library: LibExercise[]; routineItems: RoutineItem[]; programs: Program[]

@@ -82,6 +82,19 @@ export default function SettingsPage() {
           options={[{ value: 'system', label: 'Sistema' }, { value: 'light', label: 'Claro' }, { value: 'dark', label: 'Oscuro' }]} />
       </div>
 
+      <h2 className="sect">Calendario</h2>
+      <div className="card form">
+        <p className="muted small">Hora y duración de los eventos que se crean desde la grilla (Google Calendar o archivo .ics).</p>
+        <div className="row">
+          <label className="lbl grow">Hora de inicio
+            <input className="input" type="time" value={settings?.calTime ?? '07:00'} onChange={(e) => e.target.value && patchSettings({ calTime: e.target.value })} />
+          </label>
+          <label className="lbl grow">Duración (min)
+            <input className="input num" inputMode="numeric" value={settings?.calMinutes ?? 60} onChange={(e) => { const n = parseInt(e.target.value, 10); if (n > 0 && n < 600) void patchSettings({ calMinutes: n }) }} />
+          </label>
+        </div>
+      </div>
+
       <h2 className="sect">Backup</h2>
       <div className="card stack">
         <p className="muted small">Un archivo JSON con todo: rutinas, biblioteca, programas, semanas, registros, objetivos, notas y ajustes.</p>

@@ -1,7 +1,7 @@
 import { Fragment, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
-  addWeek, copyPrevWeek, deleteProgram, getGoals, getHistory, groupExercises, loadProgram, loadRoutine, moveExercise, programHasData, removeItems, removeRound,
+  addWeek, copyPrevWeek, deleteProgram, getGoals, getHistory, getSettings, groupExercises, loadProgram, loadRoutine, moveExercise, programHasData, removeItems, removeRound,
   removeSession, roundHasData, saveEntry, sessionHasData, setRest, todayISO, ungroupExercises, updateItems, updateSession, useLive,
   type Block, type Entry, type Exercise, type Field, type FlatRow, type Session,
 } from '../data'
@@ -9,6 +9,7 @@ import { bestEntry, cmpEntries, fieldsFor, fmtDay, fmtEntry, fmtTargetShort, has
 import { DateField, Icon, NoteSheet, PageHead, Sheet, confirmDialog, toast, toastUndo, useIsDesktop } from '../ui'
 import { CellEditor } from '../CellEditor'
 import { LinkSheet } from '../LinkSheet'
+import { downloadIcs, googleCalendarUrl, icsFile } from '../calendar'
 import { AddExerciseSheet, ExerciseEditor } from './ExerciseEditor'
 
 function Cell({ entry, before, fields, label, empty = '—', onOpen }: { entry?: Entry; before?: Entry; fields: Field[]; label: string; empty?: string; onOpen: () => void }) {
@@ -36,6 +37,7 @@ export default function Grilla() {
     return { ...p, tree, goal, history: await getHistory(tree.flat.map((f) => f.ex.id)) }
   }, [programId])
 
+  const settings = useLive(() => getSettings())
   const [sel, setSel] = useState<number | null>(null)
   const [cell, setCell] = useState<{ sessionId: number; ex: Exercise; round: number } | null>(null)
   const [exMenu, setExMenu] = useState<number | null>(null) // itemId
@@ -56,6 +58,7 @@ export default function Grilla() {
   const routineId = tree.routine.id
   const today = todayISO()
   const n = sessions.length
+  const cal = { title: `Entreno: ${tree.routine.name}`, time: settings?.calTime ?? '07:00', minutes: settings?.calMinutes ?? 60, details: tree.flat.map((f) => `${f.ex.name} ${f.ex.rounds}×${fmtTargetShort(f.ex.target)}`).join('\n') }
   const byKey = new Map(entries.map((e) => [`${e.sessionId}-${e.exerciseId}-${e.round}`, e]))
   const at = (s: Session | undefined, ex: Exercise, round: number) => (s ? byKey.get(`${s.id}-${ex.id}-${round}`) : undefined)
   // semana que se muestra en el celu: la elegida, si no la de hoy, si no la próxima pendiente, si no la última
@@ -285,6 +288,7 @@ export default function Grilla() {
             <button className="btn block" onClick={() => { setWeekMenu(null); void addWk() }}><Icon name="plus" />Agregar semana {n + 1}</button>
             <button className="btn block" disabled={wk(menuSession) === 1} onClick={() => { setWeekMenu(null); void copyPrev(menuSession) }}><Icon name="copy" />Copiar valores de la semana anterior</button>
             <button className="btn block" onClick={() => { setNote({ session: menuSession }); setWeekMenu(null) }}><Icon name="note" />Nota del entreno</button>
+            <a className="btn block" href={googleCalendarUrl(menuSession, cal)} target="_blank" rel="noopener noreferrer"><Icon name="calendar" />Crear evento en Google Calendar ({cal.time})</a>
             <div className="lbl">Cambiar fecha
               <DateField className="btn block" label="Fecha de la semana" value={menuSession.date}
                 onChange={async (d) => { if ((await updateSession(menuSession.id, { date: d })) === 'taken') toast(`Esta rutina ya tiene una semana el ${fmtDay(d)}`) }} />
@@ -302,6 +306,7 @@ export default function Grilla() {
             <Link className="btn block" to={`/programa/rutina/${routineId}`}><Icon name="edit" />Editar rutina</Link>
             <button className="btn block" onClick={() => { setProgMenu(false); void addWk() }}><Icon name="plus" />Agregar semana {n + 1}</button>
             <button className="btn block" onClick={() => { setProgMenu(false); setAdding(true) }}><Icon name="plus" />Agregar ejercicio</button>
+            <button className="btn block" onClick={() => { downloadIcs(`ozo-${tree.routine.name}-${program.month}`, icsFile(sessions, cal)); setProgMenu(false); toast(`Archivo con ${n} ${n === 1 ? 'evento' : 'eventos'}: abrilo para sumarlos al calendario`) }}><Icon name="download" />Descargar eventos de todas las semanas (.ics)</button>
             <button className="btn block danger" onClick={() => { setProgMenu(false); void removeProgram() }}><Icon name="trash" />Borrar programa</button>
           </div>
         </Sheet>

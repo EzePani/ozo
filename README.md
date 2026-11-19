@@ -107,3 +107,17 @@ Sin probar:
 - **Instagram y TikTok embebidos**: solo el reconocimiento de las URL.
 - **Deploy**: el workflow de GitHub Pages no cambió; corre al hacer push a `main`.
 - Lector de pantalla y escala de texto grande del sistema.
+
+## Sincronización entre dispositivos (Firebase)
+
+Sin configurar, Ozo guarda todo solo en el navegador donde lo usás (localhost, la página publicada y cada celu son lugares distintos). Para que sea lo mismo en todos:
+
+1. Entrá a <https://console.firebase.google.com> → **Agregar proyecto** (plan gratis, sin Analytics).
+2. **Compilación → Authentication → Comenzar → Google** → activar y elegir tu mail de soporte.
+3. En Authentication → **Configuración → Dominios autorizados** agregá el dominio de la página publicada (por ejemplo `tuusuario.github.io`). `localhost` ya viene.
+4. **Compilación → Firestore Database → Crear base de datos** (modo producción, la región más cercana).
+5. En Firestore → **Reglas**, pegá el contenido de `firestore.rules` y publicá.
+6. **Configuración del proyecto → Tus apps → Web (`</>`)** → registrar la app → copiá `apiKey`, `authDomain`, `projectId` y `appId` en `src/data/firebaseConfig.ts`.
+7. Volvé a publicar la página. En **Ajustes → Sincronización** tocá "Entrar con Google" en cada dispositivo.
+
+Cómo funciona: cada tabla se guarda entera en `users/{uid}/data/{tabla}`. Los cambios se suben solos ~1,5 s después y los de otros dispositivos llegan en vivo. Sin internet se sigue trabajando y se sube al volver. La primera vez en un dispositivo, si la nube y el dispositivo ya tienen datos, la app pregunta cuál conservar. Si dos dispositivos cambian la misma tabla a la vez sin conexión, gana el último que sube.

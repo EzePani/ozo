@@ -1,7 +1,7 @@
-import { Fragment, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
-  addWeek, bulkEditEntries, changeProgramMonth, changeProgramStart, clearEntries, changeProgramWeekday, copyPrevWeek, deleteProgram, getGoals, getHistory, getSettings, duplicateRound, groupExercises, insertRound, loadProgram, loadRoutine, moveExercise, programHasData, removeItems, removeRound, setHeading, setRestRow,
+  addWeek, bulkEditEntries, changeProgramMonth, changeProgramStart, clearEntries, changeProgramWeekday, copyPrevWeek, deleteProgram, getGoals, getHistory, getProgramCards, getSettings, duplicateRound, groupExercises, insertRound, loadProgram, loadRoutine, moveExercise, programHasData, removeItems, removeRound, setHeading, setRestRow,
   removeSession, roundHasData, saveEntry, sessionHasData, setRest, todayISO, ungroupExercises, updateItems, updateRoutine, updateSession, useLive,
   type Block, type BulkOp, type CellRef, type Entry, type Exercise, type Field, type FlatRow, type Session, type Target,
 } from '../data'
@@ -74,9 +74,15 @@ export default function Grilla() {
   }, [programId])
 
   const settings = useLive(() => getSettings())
+  const siblings = useLive(async () => {
+    const all = await getProgramCards()
+    const me = all.find((c) => c.program.id === programId)
+    return me ? all.filter((c) => c.program.month === me.program.month) : []
+  }, [programId])
   const [sel, setSel] = useState<number | null>(null)
   const [picked, setPicked] = useState<Set<string> | null>(null)
   const [bulkCells, setBulkCells] = useState(false)
+  useEffect(() => { setSel(null); setPicked(null) }, [programId])
   const [cell, setCell] = useState<{ sessionId: number; ex: Exercise; round: number } | null>(null)
   const [exMenu, setExMenu] = useState<number | null>(null) // itemId
   const [roundMenu, setRoundMenu] = useState<{ itemId: number; round: number } | null>(null)
@@ -213,6 +219,17 @@ export default function Grilla() {
           <button className="hbtn icon" aria-label="Más acciones del programa" title="Más acciones" onClick={() => setProgMenu(true)}><Icon name="more" size={20} /></button>
         </div>
       </PageHead>
+      {siblings && siblings.length > 1 && (
+        <nav className="progtabs" aria-label="Programas de este mes">
+          {siblings.map((c) => (
+            <button key={c.program.id} className="progtab" aria-current={c.program.id === programId ? 'page' : undefined}
+              onClick={() => c.program.id !== programId && nav(`/programa/${c.program.id}`, { replace: true })}>
+              <strong>{wdShort(c.program.weekday)}</strong> {c.routine.name}
+            </button>
+          ))}
+          <Link className="progtab add" to={`/programa/nuevo?m=${program.month}`} aria-label="Nuevo programa"><Icon name="plus" size={16} /></Link>
+        </nav>
+      )}
       {goal && <p className="hint">🎯 {goal.text}</p>}
 
       {n === 0 && <div className="card empty"><p><strong>Este programa no tiene semanas.</strong></p><button className="btn primary" onClick={addWk}>Agregar semana</button></div>}

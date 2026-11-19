@@ -167,31 +167,46 @@ export function fmtMetric(v: number, f: Field) {
 }
 
 // ---------- links embebidos ----------
-export interface LinkInfo { provider: 'youtube' | 'instagram' | 'tiktok' | 'otro'; embed?: string; label: string }
+export interface LinkInfo { provider: 'youtube' | 'instagram' | 'tiktok' | 'vimeo' | 'drive' | 'facebook' | 'archivo' | 'otro'; embed?: string; file?: string; label: string; hint?: string }
 export function parseLink(raw: string): LinkInfo | null {
   let u: URL
   try { u = new URL(raw.trim()) } catch { return null }
   if (!/^https?:$/.test(u.protocol)) return null
-  const host = u.hostname.replace(/^(www|m)\./, '')
+  const host = u.hostname.replace(/^(www|m|music|web|mobile)\./, '')
   const seg = u.pathname.split('/').filter(Boolean)
   const id = (s?: string) => (s && /^[\w-]{5,}$/.test(s) ? s : undefined)
+  if (/\.(mp4|webm|mov|m4v|ogv)$/i.test(u.pathname)) return { provider: 'archivo', label: 'Archivo de video', file: u.href }
   if (host === 'youtu.be' || host.endsWith('youtube.com') || host === 'youtube-nocookie.com') {
     const vid = host === 'youtu.be' ? id(seg[0])
       : seg[0] === 'watch' ? id(u.searchParams.get('v') ?? undefined)
       : ['shorts', 'embed', 'live', 'v'].includes(seg[0]) ? id(seg[1]) : undefined
-    return { provider: 'youtube', label: 'YouTube', embed: vid && `https://www.youtube-nocookie.com/embed/${vid}?playsinline=1&rel=0` }
+    return { provider: 'youtube', label: 'YouTube', embed: vid && `https://www.youtube-nocookie.com/embed/${vid}?playsinline=1&rel=0`, hint: vid ? undefined : 'Pegá el link del video (el que dice youtube.com/watch… o youtu.be/…), no el del canal o la lista.' }
   }
-  if (host === 'instagram.com') {
+  if (host === 'instagram.com' || host === 'instagr.am') {
     const i = seg.findIndex((s) => ['p', 'reel', 'reels', 'tv'].includes(s))
-    const code = i >= 0 ? id(seg[i + 1]) : undefined
-    return { provider: 'instagram', label: 'Instagram', embed: code && `https://www.instagram.com/${seg[i] === 'p' ? 'p' : 'reel'}/${code}/embed` }
+    const code = i >= 0 && seg[i - 1] !== 'share' ? id(seg[i + 1]) : undefined
+    return { provider: 'instagram', label: 'Instagram', embed: code && `https://www.instagram.com/${seg[i] === 'p' ? 'p' : 'reel'}/${code}/embed`, hint: code ? undefined : 'Pegá el link del reel o del post (instagram.com/reel/… o /p/…). Los links de "compartir" y de perfil no se pueden mostrar acá.' }
   }
   if (host.endsWith('tiktok.com')) {
     const i = seg.indexOf('video')
-    const vid = i >= 0 && /^\d+$/.test(seg[i + 1] ?? '') ? seg[i + 1] : undefined
-    return { provider: 'tiktok', label: 'TikTok', embed: vid && `https://www.tiktok.com/embed/v2/${vid}` }
+    const j = seg.indexOf('v')
+    const raw2 = i >= 0 ? seg[i + 1] : j >= 0 ? seg[j + 1]?.replace(/\.html$/, '') : undefined
+    const vid = raw2 && /^\d+$/.test(raw2) ? raw2 : undefined
+    return { provider: 'tiktok', label: 'TikTok', embed: vid && `https://www.tiktok.com/embed/v2/${vid}`, hint: vid ? undefined : 'Los links cortos de TikTok (vm.tiktok.com o /t/…) no se pueden mostrar. Abrilo, copiá el link largo (tiktok.com/@usuario/video/…) y pegalo.' }
   }
-  return { provider: 'otro', label: host }
+  if (host === 'vimeo.com' || host === 'player.vimeo.com') {
+    const vid = seg.find((x) => /^\d{5,}$/.test(x))
+    return { provider: 'vimeo', label: 'Vimeo', embed: vid && `https://player.vimeo.com/video/${vid}` }
+  }
+  if (host === 'drive.google.com') {
+    const k = seg.indexOf('d')
+    const fid = k >= 0 ? id(seg[k + 1]) : id(u.searchParams.get('id') ?? undefined)
+    return { provider: 'drive', label: 'Google Drive', embed: fid && `https://drive.google.com/file/d/${fid}/preview`, hint: fid ? 'El archivo tiene que estar compartido como "cualquier persona con el link".' : undefined }
+  }
+  if (host === 'facebook.com' || host === 'fb.watch') {
+    return { provider: 'facebook', label: 'Facebook', embed: `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(u.href)}&show_text=false` }
+  }
+  return { provider: 'otro', label: host, hint: 'Este sitio no permite mostrarse adentro de otra app.' }
 }
 
 // ---------- importación de rutina (JSON de Claude) ----------

@@ -507,3 +507,26 @@ code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .8125re
 .titlebtn { display: inline-flex; align-items: center; gap: 10px; max-width: 100%; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; }
 .titlebtn svg { flex: none; color: var(--muted); opacity: .6; }
 .titlebtn:hover svg { opacity: 1; color: var(--text); }
+
+/* ---------- video ---------- */
+.vidfile { width: 100%; max-height: 62dvh; border-radius: 12px; background: #000; }
+.vidfail { display: flex; align-items: center; gap: 14px; padding: 14px; border: 1px dashed var(--ctl); border-radius: 14px; background: var(--bg); }
+.vidfail-ico { flex: none; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--card); border: 1px solid var(--line); color: var(--muted); }
+.vidfail p { margin: 2px 0 0; }
+.embed.vimeo, .embed.drive { aspect-ratio: 16 / 9; }
+.embed.facebook { height: min(60dvh, 560px); background: var(--bg); }
+
+/* ---------- pestañas entre programas ---------- */
+.progtabs { display: flex; gap: 6px; overflow-x: auto; margin: 0 0 12px; padding: 3px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); width: fit-content; max-width: 100%; }
+.progtab { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 14px; border: 0; border-radius: 11px; background: none; color: var(--muted); font-size: .9375rem; text-decoration: none; white-space: nowrap; }
+.progtab strong { font-weight: 800; }
+.progtab:hover { color: var(--text); }
+.progtab[aria-current='page'] { background: var(--accent); color: var(--on-accent); }
+.progtab.add { padding: 0 11px; }
+
+/* ---------- sincronización ---------- */
+.syncline { display: flex; align-items: center; gap: 8px; }
+.syncdot { width: 10px; height: 10px; border-radius: 50%; background: var(--ctl); flex: none; }
+.syncdot.ok { background: #3fb950; }
+.syncdot.bad { background: var(--danger); }
+.syncdot.busy { background: var(--today); }

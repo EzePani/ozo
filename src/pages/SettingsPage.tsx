@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { addCustomKind, addRoutineType, clearAll, exportAll, getSettings, patchSettings, renameType, restoreAll, todayISO, typeUsage, useLive, type Theme } from '../data'
 import { cap, fmtDate, validateBackup } from '../lib'
+import { signIn, signOutSync, syncNow, useSyncState } from '../data/sync'
 import { Icon, PageHead, Seg, confirmDialog, toast } from '../ui'
 
 async function downloadBackup() {
@@ -78,6 +79,38 @@ function TagList({ scope, items, empty, label, onRemove, onAdd }: { scope: 'rout
   )
 }
 
+function SyncCard() {
+  const st = useSyncState()
+  const busy = st.phase === 'connecting' || st.phase === 'syncing'
+  const when = st.lastSync ? new Date(st.lastSync).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) : null
+  return (
+    <div className="card stack">
+      <div className="syncline">
+        <span className={'syncdot ' + (st.phase === 'idle' ? 'ok' : st.phase === 'error' ? 'bad' : busy ? 'busy' : '')} aria-hidden="true" />
+        <strong>
+          {st.phase === 'off' ? 'Sin configurar'
+            : st.phase === 'signed-out' ? 'Sin iniciar sesión'
+            : busy ? 'Sincronizando…'
+            : st.phase === 'error' ? 'Error de sincronización'
+            : 'Sincronizado'}
+        </strong>
+        {st.email && <span className="muted small"> · {st.email}</span>}
+      </div>
+      {st.phase === 'off' && <p className="muted small">Por ahora los datos viven solo en este navegador. Para verlos igual en la compu, el celu y la página publicada hay que conectar Firebase (los pasos están en el README).</p>}
+      {st.phase === 'signed-out' && <p className="muted small">Entrá con Google para que todo lo que hagas acá aparezca en tus otros dispositivos, y al revés.</p>}
+      {st.phase === 'idle' && <p className="muted small">Los cambios se suben solos unos segundos después de hacerlos{when ? ` · última vez ${when}` : ''}. Sin internet se guardan acá y se suben cuando vuelva.</p>}
+      {st.phase === 'error' && <p role="alert" className="small"><strong>{st.error}</strong></p>}
+      {st.phase === 'signed-out' && <button className="btn primary block" onClick={() => signIn()}><Icon name="link" />Entrar con Google</button>}
+      {(st.phase === 'idle' || st.phase === 'error') && st.email && (
+        <div className="row">
+          <button className="btn grow" onClick={() => syncNow()}><Icon name="upload" />Sincronizar ahora</button>
+          <button className="btn" onClick={async () => { if (await confirmDialog({ title: 'Cerrar sesión', body: 'Los datos quedan en este dispositivo, pero dejan de sincronizarse hasta que vuelvas a entrar.', ok: 'Cerrar sesión' })) await signOutSync() }}>Salir</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function SettingsPage() {
   const settings = useLive(() => getSettings())
   const [persisted, setPersisted] = useState<boolean | null>(null)
@@ -112,6 +145,9 @@ export default function SettingsPage() {
           </label>
         </div>
       </div>
+
+      <h2 className="sect">Sincronización</h2>
+      <SyncCard />
 
       <h2 className="sect">Backup</h2>
       <div className="card stack">

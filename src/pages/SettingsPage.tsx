@@ -98,7 +98,7 @@ function SyncCard() {
       </div>
       {st.phase === 'off' && <p className="muted small">Por ahora los datos viven solo en este navegador. Para verlos igual en la compu, el celu y la página publicada hay que conectar Firebase (los pasos están en el README).</p>}
       {st.phase === 'signed-out' && <p className="muted small">Entrá con Google para que todo lo que hagas acá aparezca en tus otros dispositivos, y al revés.</p>}
-      {st.phase === 'idle' && <p className="muted small">Los cambios se suben solos unos segundos después de hacerlos{when ? ` · última vez ${when}` : ''}. Sin internet se guardan acá y se suben cuando vuelva.</p>}
+      {st.phase === 'idle' && <p className="muted small">Los cambios se suben solos unos segundos después de hacerlos. Sin internet se guardan acá y se suben cuando vuelva.{when ? ` Última vez: ${when}` : ''}</p>}
       {st.phase === 'error' && <p role="alert" className="small"><strong>{st.error}</strong></p>}
       {st.phase === 'signed-out' && <button className="btn primary block" onClick={() => signIn()}><Icon name="link" />Entrar con Google</button>}
       {(st.phase === 'idle' || st.phase === 'error') && st.email && (

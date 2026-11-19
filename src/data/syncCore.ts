@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app'
 import { GoogleAuthProvider, getAuth, getRedirectResult, onAuthStateChanged, signInWithPopup, signInWithRedirect, signOut, type User } from 'firebase/auth'
-import { doc, getDoc, initializeFirestore, onSnapshot, persistentLocalCache, persistentMultipleTabManager, setDoc, type Firestore, type Unsubscribe } from 'firebase/firestore'
+import { doc, getDocFromServer, initializeFirestore, onSnapshot, persistentLocalCache, persistentMultipleTabManager, setDoc, type Firestore, type Unsubscribe } from 'firebase/firestore'
 import { confirmDialog, toast } from '../ui'
 import { TABLES, db } from './schema'
 import { FIREBASE_CONFIG } from './firebaseConfig'
@@ -27,7 +27,19 @@ let user: User | null = null
 let fs: Firestore
 let unsubs: Unsubscribe[] = []
 let hooked = false
+let ready = false // terminó la primera conexión (decidir qué lado manda)
 
+const friendly = (e: unknown) => {
+  const m = (e as Error)?.message ?? String(e)
+  return /offline|unavailable|Could not reach/i.test(m)
+    ? 'No se pudo conectar con la nube. Revisá tu conexión o si un bloqueador de anuncios/privacidad está bloqueando firestore.googleapis.com.'
+    : m
+}
+async function withRetry<T>(fn: () => Promise<T>, tries = 3): Promise<T> {
+  for (let i = 1; ; i++) {
+    try { return await fn() } catch (e) { if (i >= tries) throw e; await new Promise((r) => setTimeout(r, 1200 * i)) }
+  }
+}
 const ref = (t: Table) => doc(fs, 'users', user!.uid, 'data', t)
 const table = (t: Table) => db.table(t)
 const saveDirty = () => write(LS_DIRTY, [...dirty])
@@ -51,6 +63,7 @@ function installHooks() {
 
 export async function flushAll(manual: boolean) {
   if (!user) return
+  if (!ready) return connect(user) // reintenta la primera conexión en vez de subir a ciegas
   const todo = manual ? [...TABLES] : [...dirty]
   if (!todo.length) return
   setSyncState({ phase: 'syncing', error: undefined })
@@ -65,7 +78,7 @@ export async function flushAll(manual: boolean) {
     setSyncState({ phase: 'idle', lastSync: Date.now() })
     if (manual) toast('Sincronizado con la nube')
   } catch (e) {
-    setSyncState({ phase: 'error', error: (e as Error).message })
+    setSyncState({ phase: 'error', error: friendly(e) })
   }
 }
 
@@ -86,7 +99,7 @@ async function localHasData() {
 
 /** Primera vez en este dispositivo: decide qué lado manda. */
 async function firstConnect() {
-  const snaps = await Promise.all(TABLES.map((t) => getDoc(ref(t))))
+  const snaps = await Promise.all(TABLES.map((t) => withRetry(() => getDocFromServer(ref(t)))))
   const remote = TABLES.map((t, i) => ({ t, d: snaps[i].exists() ? snaps[i].data() : null }))
   const remoteHas = remote.some((r) => r.d && r.d.n > 0 && r.t !== 'settings')
   const localHas = await localHasData()
@@ -108,7 +121,7 @@ function listen() {
       if (!d || snap.metadata.hasPendingWrites) return
       if (d.device === DEVICE || d.updatedAt <= (seen[t] ?? 0) || dirty.has(t)) return
       void applyRemote(t, d.json, d.updatedAt)
-    }, (e) => setSyncState({ phase: 'error', error: e.message })))
+    }, (e) => setSyncState({ phase: 'error', error: friendly(e) })))
   }
 }
 
@@ -117,24 +130,25 @@ async function connect(u: User) {
   setSyncState({ phase: 'connecting', email: u.email ?? undefined, error: undefined })
   try {
     if (!Object.keys(seen).length) await firstConnect()
+    ready = true
     installHooks()
     listen()
     await flushAll(false)
     setSyncState({ phase: 'idle', lastSync: Date.now() })
     window.addEventListener('online', () => void flushAll(false))
   } catch (e) {
-    setSyncState({ phase: 'error', error: (e as Error).message })
+    setSyncState({ phase: 'error', error: friendly(e) })
   }
 }
 
 export async function start() {
   const app = initializeApp(FIREBASE_CONFIG)
-  fs = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) })
+  fs = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }), experimentalAutoDetectLongPolling: true })
   const auth = getAuth(app)
-  getRedirectResult(auth).catch((e) => setSyncState({ phase: 'error', error: (e as Error).message }))
+  getRedirectResult(auth).catch((e) => setSyncState({ phase: 'error', error: friendly(e) }))
   onAuthStateChanged(auth, (u) => {
     if (u) void connect(u)
-    else { user = null; unsubs.forEach((x) => x()); unsubs = []; setSyncState({ phase: 'signed-out', email: undefined }) }
+    else { user = null; ready = false; unsubs.forEach((x) => x()); unsubs = []; setSyncState({ phase: 'signed-out', email: undefined }) }
   })
 }
 
@@ -144,11 +158,11 @@ export async function signIn() {
   try { await signInWithPopup(auth, provider) } catch (e) {
     const code = (e as { code?: string }).code
     if (code === 'auth/popup-blocked' || code === 'auth/operation-not-supported-in-this-environment') await signInWithRedirect(auth, provider)
-    else if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') setSyncState({ phase: 'error', error: (e as Error).message })
+    else if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') setSyncState({ phase: 'error', error: friendly(e) })
   }
 }
 
 export async function signOutNow() {
   await signOut(getAuth())
-  seen = {}; write(LS_SEEN, seen); dirty.clear(); saveDirty()
+  seen = {}; write(LS_SEEN, seen); dirty.clear(); saveDirty(); ready = false
 }

@@ -535,6 +535,17 @@ export async function changeProgramMonth(programId: number, month: string): Prom
   })
 }
 
+/** Vacía lo cargado en una semana (valores y notas de rondas) y la deja como "plan"; la fecha y la columna quedan. */
+export async function clearWeekData(sessionId: number): Promise<{ cleared: number; undo: Undo }> {
+  const session = await db.sessions.get(sessionId)
+  const old = await db.entries.where('sessionId').equals(sessionId).toArray()
+  await db.transaction('rw', db.entries, db.sessions, async () => {
+    await db.entries.bulkDelete(old.map(cellKey))
+    await db.sessions.update(sessionId, { status: 'planned' })
+  })
+  return { cleared: old.length, undo: async () => { await db.entries.bulkPut(old); if (session) await db.sessions.update(sessionId, { status: session.status }) } }
+}
+
 export const sessionHasData = async (sessionId: number) => (await db.entries.where('sessionId').equals(sessionId).count()) > 0
 export async function removeSession(sessionId: number): Promise<Undo> {
   return removeRows([{ table: 'entries', keys: await entryKeys([sessionId]) }, { table: 'sessions', keys: [sessionId] }])
@@ -615,6 +626,7 @@ const cellKey = (c: CellRef): [number, number, number] => [c.sessionId, c.exerci
 export async function bulkEditEntries(cells: CellRef[], op: BulkOp, today: string): Promise<{ changed: number; undo: Undo }> {
   const sessions = new Map((await db.sessions.bulkGet([...new Set(cells.map((c) => c.sessionId))])).filter(present).map((x) => [x.id, x]))
   const before = new Map<string, Entry | undefined>()
+  const prevStatus = new Map([...sessions.values()].map((x) => [x.id, x.status]))
   const writes: Entry[] = []
   await db.transaction('rw', db.entries, db.sessions, async () => {
     for (const c of cells) {
@@ -637,9 +649,10 @@ export async function bulkEditEntries(cells: CellRef[], op: BulkOp, today: strin
     for (const sid of new Set(writes.filter((w) => w.done).map((w) => w.sessionId))) await db.sessions.update(sid, { status: 'done' })
   })
   const undo: Undo = async () => {
-    await db.transaction('rw', db.entries, async () => {
+    await db.transaction('rw', db.entries, db.sessions, async () => {
       await db.entries.bulkDelete(writes.map((w) => cellKey(w)))
       await db.entries.bulkPut([...before.values()].filter(present))
+      for (const [id, st] of prevStatus) await db.sessions.update(id, { status: st })
     })
   }
   return { changed: writes.length, undo }

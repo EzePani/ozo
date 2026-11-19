@@ -1,0 +1,112 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<title>Ozo mobile v3</title>
+<style>
+body{font:13px/1.35 sans-serif;margin:16px;background:#eee;color:#000}
+h1{font-size:18px}h2{font-size:14px;margin:0 0 6px}
+.row{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}
+.p{width:270px;background:#fff;border:2px solid #000;border-radius:14px;padding:10px}
+.p small{display:block;color:#555;margin:6px 0 0}
+.b{border:1px solid #000;border-radius:8px;padding:6px 8px;margin:4px 0;display:flex;justify-content:space-between;gap:6px}
+.c{border:1px solid #000;border-radius:20px;padding:2px 9px;display:inline-block;margin:2px 0}
+.on{background:#000;color:#fff}
+.g{background:#ddd}
+.d{border-color:#c00;color:#c00}
+.sheet{border-top:2px solid #000;margin-top:8px;padding-top:6px}
+.hr{border-top:1px dashed #000;margin:6px 0}
+.n{background:#ffd;border:1px solid #aa0;padding:8px;margin-top:12px;max-width:870px}
+</style>
+<h1>Ozo · mobile v3 (wireframes)</h1>
+<div class="row">
+
+<div class="p"><h2>1 · Grilla (semana)</h2>
+<div class="b"><span>‹ <b>Lun · Lower</b> ✎</span><span>⋯</span></div>
+<span class="c on">Lun Lower</span> <span class="c">Mié Lower</span> <span class="c">+</span>
+<div class="b g"><span>‹</span><b>Semana 1 de 3 · 23 nov ▾</b><span>›</span></div>
+<div class="b"><span>Ronda</span><span>Obj</span><span>Sem 0</span><span>Sem 1</span></div>
+<div class="b g"><b>BLOQUE A · PIERNAS</b></div>
+<div class="b g"><b>Búlgara mancuernas</b><span class="c">Rest 3'–5'</span></div>
+<div class="b"><span>R1</span><span>6–10</span><span>18×8</span><span>cargar</span></div>
+<div class="b"><span>R2</span><span>6–10</span><span>18×7</span><span>cargar</span></div>
+<div class="b g"><b>Peso muerto</b><span class="c">Rest 4'</span></div>
+<div class="b"><span>R1</span><span>8–12</span><span>50×12</span><span>cargar</span></div>
+<div class="b on" style="justify-content:center">Empezar entreno</div>
+<small>Header: solo ‹ título ⋯ (todo lo demás va en ⋯). Estado y acciones de la semana: tocar "Semana 1 de 3 ▾". Rest siempre visible como chip. Un solo botón primario abajo.</small></div>
+
+<div class="p"><h2>2 · Menú de la semana</h2>
+<b>Semana 1 · 23 nov</b>
+<div class="sheet">
+<small>Estado</small><div class="b"><span class="c on">Plan</span><span class="c">Hecha</span></div>
+<div class="b"><span>Fecha</span><span>23 nov ›</span></div>
+<div class="b"><span>Nota del entreno</span><span>›</span></div>
+<div class="b"><span>Copiar valores de la sem. anterior</span><span>›</span></div>
+<div class="b"><span>Agregar al calendario</span><span>›</span></div>
+<div class="hr"></div>
+<div class="b d"><span><b>Borrar datos cargados</b><br>queda la columna y la fecha</span></div>
+<div class="b d"><span><b>Quitar la semana</b><br>borra la columna entera</span></div>
+</div>
+<small>NUEVO: "Borrar datos" separado de "Quitar semana". Las dos piden confirmar y tienen Deshacer.</small></div>
+
+<div class="p"><h2>3 · Menú ⋯ del programa</h2>
+<b>Lun · Lower</b>
+<div class="sheet">
+<small>Día</small><div class="b"><span class="c on">L</span><span class="c">M</span><span class="c">X</span><span class="c">J</span><span class="c">V</span><span class="c">S</span><span class="c">D</span></div>
+<div class="b"><span>Inicio</span><span>23 nov ›</span></div>
+<div class="b"><span>Mes</span><span>‹ Noviembre ›</span></div>
+<div class="hr"></div>
+<div class="b"><span>Cambiar nombre</span><span>›</span></div>
+<div class="b"><span>Editar rutina</span><span>›</span></div>
+<div class="b"><span>Seleccionar celdas</span><span>›</span></div>
+<div class="b"><span>Agregar ejercicio</span><span>›</span></div>
+<div class="b"><span>Eventos al calendario (.ics)</span><span>›</span></div>
+<div class="b d"><span>Borrar programa</span></div>
+</div>
+<small>El ícono "Seleccionar" sale del header y pasa acá.</small></div>
+
+<div class="p"><h2>4 · Cargar semana (entreno)</h2>
+<div class="b"><span>‹ <b>Lun · Lower</b></span><span>3/12 ✓</span></div>
+<div class="b g"><span>▓▓▓░░░░░░░░░</span></div>
+<div class="b g"><b>Búlgara mancuernas</b><span>▶ 📝</span></div>
+<small>Obj 6–10 · Mejor 20×8</small>
+<div class="b"><span>R1</span><span>[ 20 kg ]</span><span>[ 8 ]</span><span>✓</span></div>
+<div class="b"><span>R2</span><span>[ 20 kg ]</span><span>[ 7 ]</span><span>✓</span></div>
+<div class="b"><span>R3</span><span>[ kg ]</span><span>[ reps ]</span><span>○</span></div>
+<div class="b g" style="justify-content:center">⏱ Descanso 3'–5' · <b>Iniciar</b></div>
+<div class="b g"><b>Peso muerto rumano</b><span>▶</span></div>
+<div class="b"><span>R1</span><span>[ kg ]</span><span>[ reps ]</span><span>○</span></div>
+<div class="b g" style="justify-content:center">⏱ Descanso 4' · <b>Iniciar</b></div>
+<div class="b on" style="justify-content:center">Terminar entreno</div>
+<small>NUEVO: el descanso aparece entre ejercicios (y entre rondas de una superserie) y arranca el cronómetro con un toque.</small></div>
+
+<div class="p"><h2>5 · Editar rutina</h2>
+<div class="b"><span>‹ <b>Lower</b> <span class="c">Lower</span></span><span>⋯</span></div>
+<div class="b g"><b>BLOQUE A · PIERNAS</b></div>
+<div class="b"><span>⋮⋮ <b>Búlgara</b><br>4 × 6–10</span><span class="c">Rest 3'</span></div>
+<div style="text-align:center">(🔗) unir</div>
+<div class="b"><span>⋮⋮ <b>Peso muerto</b><br>3 × 8–12</span><span class="c">Rest 4'</span></div>
+<div class="b g"><b>SUPERSERIE</b><span class="c">Rest 1'</span></div>
+<div class="b"><span>⋮⋮ <b>Crunch</b> 4 × máx</span></div>
+<div style="text-align:center">(⛓ separar)</div>
+<div class="b"><span>⋮⋮ <b>Wheel</b> 4 × máx</span></div>
+<div class="b on" style="justify-content:center">+ Ejercicio</div>
+<small>"Seleccionar" pasa al ⋯. Mantener apretado también selecciona. Mismo lenguaje: chips para descanso, 🔗 para unir.</small></div>
+
+<div class="p"><h2>6 · Programa (lista)</h2>
+<div class="b"><span><b>Programa</b></span><span class="c on">+ Nuevo</span></div>
+<div class="b"><span>‹ <b>Noviembre 2026</b> ›</span></div>
+<div style="text-align:center"><span class="c">Ir a este mes</span></div>
+<div class="b" style="display:block"><b>Lun · Lower</b> <span class="c">Lower</span><br>3 semanas · 7 ejercicios<br>▓░░ Semana 1 de 3</div>
+<div class="b" style="display:block"><b>Mié · Lower</b> <span class="c">Lower</span><br>3 semanas · 5 ejercicios<br>░░░ Semana 1 de 3</div>
+<h2 style="margin-top:10px">Rutinas</h2>
+<div class="b"><span>Lower<br><small>7 ejercicios</small></span><span class="c">Programar</span></div>
+<small>Reordenar rutinas y demás acciones van a un ⋯ por rutina (hoy son 3 botones por fila).</small></div>
+
+</div>
+
+<div class="n"><b>Visión de diseño mobile</b><br>
+1. <b>Un botón primario por pantalla</b> (Empezar, Terminar, + Ejercicio). Todo lo demás es secundario.<br>
+2. <b>Header fijo: ‹ título ⋯</b>. Nada de 3-4 botones sueltos arriba; lo extra vive en el ⋯.<br>
+3. <b>Menús como listas</b> (fila + ›) agrupadas con títulos chicos, en vez de botones grandes con borde. Acciones destructivas al final, en rojo, separadas.<br>
+4. <b>Chips para datos chicos</b> (Rest, tipo, estado). Lo tocable se nota por el ›.<br>
+5. <b>Destruir ≠ vaciar</b>: siempre separar "borrar datos" de "quitar la fila/columna".<br>
+6. <b>Confirmar + Deshacer</b> en todo, como ahora.<br>
+7. Zonas del pulgar: acciones principales abajo, 48 px mínimo por toque.</div>

@@ -1,7 +1,8 @@
+import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { getGoals, moveRoutine, getProgramCards, getRoutineCards, useLive } from '../data'
 import { WEEKDAYS, monthName, thisMonth, wdShort } from '../lib'
-import { Bar, Chip, Icon, MonthNav, PageHead, confirmDialog } from '../ui'
+import { Bar, Chip, Icon, MonthNav, PageHead, Sheet, confirmDialog } from '../ui'
 
 export default function Programa() {
   const [params, setParams] = useSearchParams()
@@ -9,6 +10,7 @@ export default function Programa() {
   const cards = useLive(() => getProgramCards(month), [month])
   const routines = useLive(() => getRoutineCards())
   const goals = useLive(() => getGoals())
+  const [menuId, setMenuId] = useState<number | null>(null)
 
   return (
     <main className="page">
@@ -44,18 +46,33 @@ export default function Programa() {
       <h2 className="sect">Rutinas</h2>
       {routines && routines.length === 0 && <p className="muted hint">Todavía no hay rutinas. Se crean al armar un programa.</p>}
       <ul className="card plain">
-        {routines?.map(({ routine, exercises }, i) => (
+        {routines?.map(({ routine, exercises }) => (
           <li key={routine.id} className="line">
             <Link className="linkrow grow" to={`/programa/rutina/${routine.id}`}>
               <strong>{routine.name}</strong> <Chip>{routine.type}</Chip><br />
               <span className="muted small">{exercises} {exercises === 1 ? 'ejercicio' : 'ejercicios'} · editar rutina</span>
             </Link>
-            <button className="minibtn" aria-label={`Subir ${routine.name}`} title="Subir" disabled={i === 0} onClick={async () => { if (await confirmDialog({ title: `Subir ${routine.name} en la lista`, ok: 'Subir' })) await moveRoutine(routine.id, -1) }}><Icon name="up" size={18} /></button>
-            <button className="minibtn" aria-label={`Bajar ${routine.name}`} title="Bajar" disabled={i === routines.length - 1} onClick={async () => { if (await confirmDialog({ title: `Bajar ${routine.name} en la lista`, ok: 'Bajar' })) await moveRoutine(routine.id, 1) }}><Icon name="down" size={18} /></button>
             <Link className="btn compact" to={`/programa/nuevo?rutina=${routine.id}&m=${month}`}>Programar</Link>
+            <button className="iconbtn" aria-label={`Más acciones de ${routine.name}`} onClick={() => setMenuId(routine.id)}><Icon name="more" /></button>
           </li>
         ))}
       </ul>
+      {menuId != null && routines && (() => {
+        const i = routines.findIndex((x) => x.routine.id === menuId)
+        const r = routines[i]
+        if (!r) return null
+        const move = async (d: -1 | 1) => { setMenuId(null); if (await confirmDialog({ title: `${d < 0 ? 'Subir' : 'Bajar'} ${r.routine.name} en la lista`, ok: d < 0 ? 'Subir' : 'Bajar' })) await moveRoutine(r.routine.id, d) }
+        return (
+          <Sheet title={r.routine.name} onClose={() => setMenuId(null)}>
+            <div className="mrows">
+              <Link className="mrow" to={`/programa/rutina/${r.routine.id}`}><Icon name="edit" size={20} />Editar rutina</Link>
+              <Link className="mrow" to={`/programa/nuevo?rutina=${r.routine.id}&m=${month}`}><Icon name="calendar" size={20} />Programar en {monthName(month).toLowerCase()}</Link>
+              <button className="mrow" disabled={i === 0} onClick={() => move(-1)}><Icon name="up" size={20} />Subir en la lista</button>
+              <button className="mrow" disabled={i === routines.length - 1} onClick={() => move(1)}><Icon name="down" size={20} />Bajar en la lista</button>
+            </div>
+          </Sheet>
+        )
+      })()}
     </main>
   )
 }

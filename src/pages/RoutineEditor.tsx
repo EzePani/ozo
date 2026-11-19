@@ -169,7 +169,6 @@ export default function RoutineEditor() {
       ) : (
         <div className="actionbar">
           <button className="btn primary grow" onClick={() => setAdding(true)}><Icon name="plus" />Ejercicio</button>
-          <button className="btn" disabled={!tree.flat.length} onClick={() => setSel(new Set())}><Icon name="select" />Seleccionar</button>
         </div>
       )}
 
@@ -182,6 +181,7 @@ export default function RoutineEditor() {
             <div className="lbl">Tipo<TypePicker value={tree.routine.type} onChange={async (type) => { if (type !== tree.routine.type && (await confirmDialog({ title: `Cambiar el tipo a "${type}"`, ok: 'Cambiar' }))) await updateRoutine(routineId, { type }) }} /></div>
           </form>
           <div className="mrows">
+            {tree.flat.length > 0 && <button type="button" className="mrow" onClick={() => { setMeta(false); setSel(new Set()) }}><Icon name="select" size={20} />Seleccionar ejercicios</button>}
             <Link className="mrow" to={`/programa/nuevo?rutina=${routineId}`}><Icon name="calendar" size={20} />Programar en un mes</Link>
             <button type="button" className="mrow" onClick={async () => { if (!(await confirmDialog({ title: `Duplicar la rutina "${tree.routine.name}"`, ok: 'Duplicar' }))) return; const id = await duplicateRoutine(routineId); setMeta(false); if (id) { toast('Rutina duplicada'); nav(`/programa/rutina/${id}`) } }}><Icon name="copy" size={20} />Duplicar rutina</button>
             <button type="button" className="mrow danger" onClick={() => { setMeta(false); void removeRoutine() }}><Icon name="trash" size={20} />Borrar rutina</button>

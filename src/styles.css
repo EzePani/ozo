@@ -530,3 +530,55 @@ code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .8125re
 .syncdot.ok { background: #3fb950; }
 .syncdot.bad { background: var(--danger); }
 .syncdot.busy { background: var(--today); }
+
+/* ---------- mobile v3 ---------- */
+.weekbtn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; border: 0; background: none; color: inherit; font: inherit; min-height: 52px; border-radius: 12px; }
+.weekbtn:active { background: var(--card); }
+.exbar .pill.rest { background: rgba(0,0,0,.1); border-color: transparent; color: inherit; margin-right: 4px; }
+.mrow.warn, .mrow.warn svg { color: #c47a00; }
+@media (prefers-color-scheme: dark) { .mrow.warn, .mrow.warn svg { color: #f0b04a; } }
+.mrow > span small { display: block; font-size: .75rem; font-weight: 400; opacity: .75; }
+.mrow > span { display: flex; flex-direction: column; }
+
+/* ---------- entreno (una sola pantalla) ---------- */
+.sprog { display: flex; flex-direction: column; gap: 6px; }
+.sblock { padding: 4px 12px 8px; display: flex; flex-direction: column; gap: 6px; }
+.sinfo { padding-top: 8px; }
+.sinfo + .sinfo { border-top: 1px dashed var(--ctl); margin-top: 6px; }
+.sinfo-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sinfo h2 { font-size: 1.125rem; margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.sinfo-tools { display: flex; flex: none; }
+.iconbtn.static { pointer-events: none; color: var(--muted); }
+.snote { color: var(--muted); margin: 2px 0 0; }
+.restdiv { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; border: 1px dashed var(--ctl); border-radius: 12px; background: none; color: var(--muted); font-size: .9375rem; }
+.restdiv strong { color: var(--text); }
+.session .rowheading { margin-top: 8px; }
+.setrow .seg { flex: 1; }
+.setrow .seg button { font-size: .9375rem; }
+
+/* ---------- jerarquía en la grilla mobile: bloque > ejercicio > rondas ---------- */
+.grid:not(.desk) .headrow td { background: transparent !important; border-top: 0 !important; padding: 18px 4px 6px !important; }
+.grid:not(.desk) .headrow button { padding: 0 0 0 10px; min-height: 0; border-left: 3px solid var(--today); font-size: .8125rem; letter-spacing: .1em; color: var(--text); }
+.grid:not(.desk) .exbar td { background: color-mix(in srgb, var(--text) 9%, var(--card)); color: var(--text); border-left: 4px solid var(--text); border-top: 1px solid var(--line); }
+.grid:not(.desk) .exbar-name { font-size: 1.0625rem; font-weight: 700; }
+.grid:not(.desk) .exbar .pill.rest { background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
+.grid:not(.desk) .exbar .pl-block { color: var(--muted); }
+.grid:not(.desk) .exbar :focus-visible { outline-color: var(--text); }
+.grid:not(.desk) tbody th .cell { color: var(--muted); }
+.grid:not(.desk) .obj { color: var(--muted); }
+
+/* ---------- menú de semana simplificado ---------- */
+.mrows.first { margin-top: 0; border-top: 0; }
+.mrow > span:not(.mval):not(small) { flex: 1; min-width: 0; }
+.mrow .mval { flex: none; margin-left: auto; color: var(--muted); font-size: .9375rem; }
+.mrow.sub { padding-left: 24px; }
+.mrow.danger .mval { color: inherit; opacity: .7; }
+.daterow, .switchrow { position: relative; cursor: pointer; }
+.dateover { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.switch { appearance: none; -webkit-appearance: none; flex: none; width: 48px; height: 28px; margin: 0 0 0 auto; border-radius: 999px; background: var(--ctl); position: relative; transition: background .15s; }
+.switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: transform .15s; }
+.switch:checked { background: #3fb950; }
+.switch:checked::after { transform: translateX(20px); }
+.iconbtn.addweek { border: 1.5px dashed var(--ctl); border-radius: 50%; width: 40px; height: 40px; margin: 4px 4px; color: var(--muted); }
+.addweekbtn { flex: none; display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 12px 0 10px; margin: 0 4px; border: 1.5px dashed var(--ctl); border-radius: 999px; background: none; color: var(--text); font-size: .875rem; font-weight: 700; }
+.addweekbtn:active { background: var(--card); }

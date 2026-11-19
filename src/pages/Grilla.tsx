@@ -1,12 +1,12 @@
 import { Fragment, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
-  addWeek, bulkEditEntries, changeProgramMonth, changeProgramStart, clearEntries, changeProgramWeekday, copyPrevWeek, deleteProgram, getGoals, getHistory, getProgramCards, getSettings, duplicateRound, groupExercises, insertRound, loadProgram, loadRoutine, moveExercise, programHasData, removeItems, removeRound, setHeading, setRestRow,
+  addWeek, bulkEditEntries, changeProgramStart, clearEntries, clearWeekData, changeProgramWeekday, copyPrevWeek, deleteProgram, getGoals, getHistory, getProgramCards, getSettings, duplicateRound, groupExercises, insertRound, loadProgram, loadRoutine, moveExercise, programHasData, removeItems, removeRound, setHeading, setRestRow,
   removeSession, roundHasData, saveEntry, sessionHasData, setRest, todayISO, ungroupExercises, updateItems, updateRoutine, updateSession, useLive,
   type Block, type BulkOp, type CellRef, type Entry, type Exercise, type Field, type FlatRow, type Session, type Target,
 } from '../data'
-import { FIELD_LABEL, bestEntry, cmpEntries, fieldsFor, fmtDay, fmtEntry, fmtTargetShort, hasValues, wdShort, monthLabel, shiftMonth, WD_ORDER, WEEKDAYS } from '../lib'
-import { DateField, Icon, NoteSheet, PageHead, Seg, Sheet, confirmDialog, toast, toastUndo, useIsDesktop } from '../ui'
+import { FIELD_LABEL, bestEntry, cmpEntries, fieldsFor, fmtDay, fmtEntry, fmtTargetShort, hasValues, wdShort, WD_ORDER, WEEKDAYS } from '../lib'
+import { Icon, NoteSheet, PageHead, Seg, Sheet, confirmDialog, toast, toastUndo, useIsDesktop } from '../ui'
 import { CellEditor } from '../CellEditor'
 import { LinkSheet } from '../LinkSheet'
 import { downloadIcs, googleCalendarUrl, icsFile } from '../calendar'
@@ -93,6 +93,7 @@ export default function Grilla() {
   const [grouping, setGrouping] = useState<FlatRow | null>(null)
   const [targetEdit, setTargetEdit] = useState<Exercise | null>(null)
   const [renaming, setRenaming] = useState(false)
+  const [delOpen, setDelOpen] = useState(false)
   const [headEdit, setHeadEdit] = useState<Block | null>(null)
   const [restEdit, setRestEdit] = useState<Block | null>(null)
   const [link, setLink] = useState<Exercise | null>(null)
@@ -139,6 +140,11 @@ export default function Grilla() {
     setSel(null)
     toastUndo(label, await removeSession(s.id))
   }
+  const clearWk = async (s: Session) => {
+    if (!(await sure(`Borrar los datos de la semana ${wk(s)}`, 'Borrar datos', `Se vacían los valores y notas cargados. La fecha (${fmtDay(s.date)}) y la columna se conservan.`))) return
+    const { cleared, undo } = await clearWeekData(s.id)
+    toastUndo(cleared ? `Datos de la semana ${wk(s)} borrados` : 'Esa semana no tenía datos cargados', undo)
+  }
   const removeProgram = async () => {
     if (!(await sure('Borrar este programa', 'Borrar programa', `Se quitan sus ${n} semanas${(await programHasData(programId)) ? ' con los datos cargados' : ''}. La rutina "${tree.routine.name}" y la biblioteca no se tocan.`))) return
     const undo = await deleteProgram(programId)
@@ -150,13 +156,6 @@ export default function Grilla() {
     const r = await changeProgramStart(programId, iso); setProgMenu(false)
     if (r === 'taken') return toast('Esta rutina ya tiene semanas en esas fechas')
     toast(`Ahora empieza el ${fmtDay(iso)}`)
-  }
-  const moveMonth = async (d: number) => {
-    const m = shiftMonth(program.month, d)
-    if (!(await sure(`Mover el programa a ${monthLabel(m)}`, 'Mover', 'Todas sus semanas cambian de fecha.'))) return setProgMenu(false)
-    const r = await changeProgramMonth(programId, m); setProgMenu(false)
-    if (r === 'taken') return toast('Esta rutina ya tiene semanas en esas fechas')
-    nav(`/programa/${programId}`, { replace: true }); toast(`Programa movido a ${monthLabel(m)}`)
   }
   const copyPrev = async (s: Session) => { if (!(await sure(`Copiar los valores de la semana ${wk(s) - 1} a la ${wk(s)}`, 'Copiar', 'No pisa lo que ya cargaste.'))) return; const c = await copyPrevWeek(s.id); toast(c ? `${c} ${c === 1 ? 'valor copiado' : 'valores copiados'}: quedan pendientes hasta que los confirmes` : 'No había nada para copiar') }
   // ---------- selección de varias celdas ----------
@@ -211,7 +210,7 @@ export default function Grilla() {
         <div className="hactions">
           {desktop && cur && <Link className="hbtn primary" to={`/sesion/${cur.id}`}><Icon name="play" size={18} />Cargar semana {curIdx + 1}</Link>}
           {desktop && <Link className="hbtn" to={`/programa/rutina/${routineId}`}><Icon name="edit" size={18} />Editar rutina</Link>}
-          {n > 0 && tree.flat.length > 0 && (
+          {desktop && n > 0 && tree.flat.length > 0 && (
             <button className={'hbtn' + (picked ? ' primary' : '')} aria-pressed={picked != null} title="Seleccionar celdas para editarlas juntas" onClick={() => setPicked(picked ? null : new Set())}>
               <Icon name={picked ? 'check' : 'select'} size={18} /><span className="hlabel">{picked ? 'Listo' : 'Seleccionar'}</span>
             </button>
@@ -239,9 +238,14 @@ export default function Grilla() {
         <>
           <div className="monthnav">
             <button className="iconbtn" aria-label="Semana anterior" disabled={curIdx === 0} onClick={() => setSel(sessions[curIdx - 1].id)}><Icon name="back" /></button>
-            <span className="weeklabel" aria-live="polite"><strong>Semana {curIdx + 1} de {n}</strong> · <span className="num">{fmtDay(cur.date)}</span><br /><span className="colstate"><span className={'dot ' + (cur.status === 'done' ? 'full' : '')} aria-hidden="true" />{colState(cur)}{cur.note ? ' · 📝' : ''}</span></span>
-            <button className="iconbtn" aria-label="Semana siguiente" disabled={curIdx === n - 1} onClick={() => setSel(sessions[curIdx + 1].id)}><Icon name="next" /></button>
-            <button className="iconbtn" aria-label={`Acciones de la semana ${curIdx + 1}`} onClick={() => setWeekMenu(cur.id)}><Icon name="more" /></button>
+            <button className="weeklabel weekbtn" aria-live="polite" aria-label={`Semana ${curIdx + 1} de ${n}, ${fmtDay(cur.date)}, ${colState(cur)}. Abrir acciones de la semana`} onClick={() => setWeekMenu(cur.id)}>
+              <strong>Semana {curIdx + 1} de {n} ▾</strong>
+              <span className="num small muted">{fmtDay(cur.date)}</span>
+              <span className={'badge ' + (cur.date === today ? 'now' : cur.status === 'done' ? 'ok' : 'plan')}>{cur.date === today ? 'Hoy' : cur.status === 'done' ? 'Hecha' : 'Plan'}{cur.note ? ' · nota' : ''}</span>
+            </button>
+            {curIdx === n - 1
+              ? <button className="addweekbtn" aria-label={`Agregar la semana ${n + 1}`} onClick={addWk}><Icon name="plus" size={16} />Semana</button>
+              : <button className="iconbtn" aria-label="Semana siguiente" onClick={() => setSel(sessions[curIdx + 1].id)}><Icon name="next" /></button>}
           </div>
           {tree.flat.length > 0 && (
             <table className="grid">
@@ -261,8 +265,10 @@ export default function Grilla() {
                             <button className="exbar-main" onClick={() => setExMenu(ex.itemId)} aria-label={`${ex.name}. Abrir acciones del ejercicio`}>
                               {pos !== 'single' && <span className="pl-block">SUPERSERIE · alterna</span>}
                               <span className="exbar-name">{ex.name}</span>
-                              <span className="exbar-sub">{block.restLabel ? `Rest ${block.restLabel} · ` : ''}⋯</span>
                             </button>
+                            {(pos === 'single' || pos === 'first') && !block.noRest && (
+                              <button className="pill rest" onClick={() => setRestEdit(block)} aria-label={`Descanso: ${block.restLabel || 'sin definir'}. Editar`}>{block.restLabel ? `Rest ${block.restLabel}` : '+ Rest'}</button>
+                            )}
                             {ex.note && <button className="iconbtn" aria-label={`Nota de ${ex.name}: ${ex.note}`} title={ex.note} onClick={() => setNote({ row })}><Icon name="note" /></button>}
                             {ex.linkUrl && <button className="iconbtn" aria-label={`Ver video de ${ex.name}`} onClick={() => setLink(ex)}><Icon name="play" /></button>}
                           </div>
@@ -410,20 +416,32 @@ export default function Grilla() {
         </Sheet>
       )}
       {menuSession && (
-        <Sheet title={`Semana ${wk(menuSession)} · ${fmtDay(menuSession.date)}`} onClose={() => setWeekMenu(null)}>
-          <div className="menu">
-            <button className="btn block" onClick={() => { setWeekMenu(null); void addWk() }}><Icon name="plus" />Agregar semana {n + 1}</button>
-            <button className="btn block" disabled={wk(menuSession) === 1} onClick={() => { setWeekMenu(null); void copyPrev(menuSession) }}><Icon name="copy" />Copiar valores de la semana anterior</button>
-            <button className="btn block" onClick={() => { setNote({ session: menuSession }); setWeekMenu(null) }}><Icon name="note" />Nota del entreno</button>
-            <a className="btn block" href={googleCalendarUrl(menuSession, cal)} target="_blank" rel="noopener noreferrer"><Icon name="calendar" />Crear evento en Google Calendar ({cal.time})</a>
-            <div className="lbl">Cambiar fecha
-              <DateField className="btn block" label="Fecha de la semana" value={menuSession.date}
-                onChange={async (d) => { if (!(await sure(`Mover la semana ${wk(menuSession)} al ${fmtDay(d)}`, 'Mover'))) return; if ((await updateSession(menuSession.id, { date: d })) === 'taken') toast(`Esta rutina ya tiene una semana el ${fmtDay(d)}`) }} />
-            </div>
-            <button className="btn block" onClick={async () => { if (await sure(menuSession.status === 'done' ? `Marcar la semana ${wk(menuSession)} como no entrenada` : `Marcar la semana ${wk(menuSession)} como entrenada`, 'Confirmar')) await updateSession(menuSession.id, { status: menuSession.status === 'done' ? 'planned' : 'done' }) }}>
-              {menuSession.status === 'done' ? 'Marcar como no entrenada' : 'Marcar como entrenada'}
-            </button>
-            <button className="btn block danger" onClick={() => { setWeekMenu(null); void removeWk(menuSession) }}><Icon name="trash" />Quitar semana {wk(menuSession)}</button>
+        <Sheet title={`Semana ${wk(menuSession)} · ${fmtDay(menuSession.date)}`} onClose={() => { setWeekMenu(null); setDelOpen(false) }}>
+          <div className="mrows first">
+            <label className="mrow switchrow">
+              <Icon name="check" size={20} />
+              <span>Entrenada</span>
+              <input type="checkbox" role="switch" className="switch" checked={menuSession.status === 'done'}
+                onChange={async (e) => { const v = e.target.checked ? 'done' : 'planned'; if (await sure(v === 'done' ? `Marcar la semana ${wk(menuSession)} como entrenada` : `Marcar la semana ${wk(menuSession)} como no entrenada`, 'Confirmar')) await updateSession(menuSession.id, { status: v }) }} />
+            </label>
+            <label className="mrow daterow">
+              <Icon name="calendar" size={20} />
+              <span>Fecha</span>
+              <span className="mval">{fmtDay(menuSession.date)} ›</span>
+              <input type="date" className="dateover" aria-label={`Fecha de la semana: ${fmtDay(menuSession.date)}`} value={menuSession.date}
+                onClick={(e) => { try { e.currentTarget.showPicker() } catch { /* sin soporte */ } }}
+                onChange={async (e) => { const d = e.target.value; if (!d) return; if (!(await sure(`Mover la semana ${wk(menuSession)} al ${fmtDay(d)}`, 'Mover'))) return; if ((await updateSession(menuSession.id, { date: d })) === 'taken') toast(`Esta rutina ya tiene una semana el ${fmtDay(d)}`) }} />
+            </label>
+            <button className="mrow" onClick={() => { setNote({ session: menuSession }); setWeekMenu(null) }}><Icon name="note" size={20} /><span>Nota del entreno</span><span className="mval">{menuSession.note ? 'Editar ›' : '›'}</span></button>
+            <button className="mrow" disabled={wk(menuSession) === 1} onClick={() => { setWeekMenu(null); void copyPrev(menuSession) }}><Icon name="copy" size={20} /><span>Copiar de la semana anterior</span></button>
+            <a className="mrow" href={googleCalendarUrl(menuSession, cal)} target="_blank" rel="noopener noreferrer"><Icon name="calendar" size={20} /><span>Agregar al calendario</span><span className="mval">{cal.time}</span></a>
+            <button className="mrow danger" aria-expanded={delOpen} onClick={() => setDelOpen(!delOpen)}><Icon name="trash" size={20} /><span>Borrar…</span><span className="mval">{delOpen ? '▴' : '▾'}</span></button>
+            {delOpen && (
+              <>
+                <button className="mrow warn sub" onClick={() => { setWeekMenu(null); setDelOpen(false); void clearWk(menuSession) }}><Icon name="close" size={20} /><span>Borrar datos cargados<small>Queda la columna y la fecha</small></span></button>
+                <button className="mrow danger sub" onClick={() => { setWeekMenu(null); setDelOpen(false); void removeWk(menuSession) }}><Icon name="trash" size={20} /><span>Quitar la semana {wk(menuSession)}<small>Borra la columna entera</small></span></button>
+              </>
+            )}
           </div>
         </Sheet>
       )}
@@ -440,24 +458,18 @@ export default function Grilla() {
               }}>{wdShort(d)}</button>)}
             </div>
           </div>
-          <div className="setrow">
-            <span className="setlabel">Inicio</span>
-            <DateField className="btn grow startfield" label="Fecha de inicio del programa" value={sessions[0]?.date ?? today} onChange={moveStart} />
-          </div>
-          <div className="setrow">
-            <span className="setlabel">Mes</span>
-            <div className="monthstep">
-              <button className="iconbtn" aria-label="Pasar al mes anterior" onClick={() => moveMonth(-1)}><Icon name="back" /></button>
-              <strong>{monthLabel(program.month)}</strong>
-              <button className="iconbtn" aria-label="Pasar al mes siguiente" onClick={() => moveMonth(1)}><Icon name="next" /></button>
-            </div>
-          </div>
-          <div className="mrows">
-            <button className="mrow" onClick={() => { setProgMenu(false); setRenaming(true) }}><Icon name="edit" size={20} />Cambiar nombre</button>
+          <div className="mrows first">
+            <label className="mrow daterow">
+              <Icon name="calendar" size={20} />
+              <span>Empieza el</span>
+              <span className="mval">{fmtDay(sessions[0]?.date ?? today)} ›</span>
+              <input type="date" className="dateover" aria-label={`Fecha de inicio del programa: ${fmtDay(sessions[0]?.date ?? today)}`} value={sessions[0]?.date ?? today}
+                onClick={(e) => { try { e.currentTarget.showPicker() } catch { /* sin soporte */ } }}
+                onChange={(e) => e.target.value && void moveStart(e.target.value)} />
+            </label>
+            {n > 0 && tree.flat.length > 0 && <button className="mrow" onClick={() => { setProgMenu(false); setPicked(new Set()) }}><Icon name="select" size={20} />Seleccionar celdas</button>}
             <Link className="mrow" to={`/programa/rutina/${routineId}`}><Icon name="edit" size={20} />Editar rutina</Link>
-            <button className="mrow" onClick={() => { setProgMenu(false); void addWk() }}><Icon name="plus" size={20} />Agregar semana {n + 1}</button>
-            <button className="mrow" onClick={() => { setProgMenu(false); setAdding(true) }}><Icon name="plus" size={20} />Agregar ejercicio</button>
-            <button className="mrow" onClick={() => { downloadIcs(`ozo-${tree.routine.name}-${program.month}`, icsFile(sessions, cal)); setProgMenu(false); toast(`Archivo con ${n} ${n === 1 ? 'evento' : 'eventos'}: abrilo para sumarlos al calendario`) }}><Icon name="download" size={20} />Eventos al calendario (.ics)</button>
+            <button className="mrow" onClick={() => { downloadIcs(`ozo-${tree.routine.name}-${program.month}`, icsFile(sessions, cal)); setProgMenu(false); toast(`Archivo con ${n} ${n === 1 ? 'evento' : 'eventos'}: abrilo para sumarlos al calendario`) }}><Icon name="download" size={20} />Calendario de todas las semanas (.ics)</button>
             <button className="mrow danger" onClick={() => { setProgMenu(false); void removeProgram() }}><Icon name="trash" size={20} />Borrar programa</button>
           </div>
         </Sheet>

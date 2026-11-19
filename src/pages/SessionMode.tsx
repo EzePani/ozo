@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { finishSession, loadSession, saveEntry, updateSession, useLive, type Block, type Entry, type Exercise } from '../data'
 import { bestEntry, cap, cmpEntries, fieldsFor, fmtDay, fmtEntry, fmtTarget, hasValues, parseRest } from '../lib'
-import { Bar, Chip, Icon, NoteSheet, Sheet, toast } from '../ui'
+import { Bar, Icon, NoteSheet, Sheet, toast } from '../ui'
 import { useStopwatch } from '../Stopwatch'
 import { LinkSheet } from '../LinkSheet'
 import { CellEditor } from '../CellEditor'
@@ -16,7 +16,6 @@ export default function SessionMode() {
   const nav = useNavigate()
   const sw = useStopwatch()
   const data = useLive(() => loadSession(sessionId), [sessionId])
-  const [at, setAt] = useState<number | null>(null)
   const [cell, setCell] = useState<Row | null>(null)
   const [link, setLink] = useState<Exercise | null>(null)
   const [menu, setMenu] = useState(false)
@@ -35,11 +34,6 @@ export default function SessionMode() {
   }, [data])
   const entryOf = (r: Row) => data?.entries.find((e) => e.exerciseId === r.ex.id && e.round === r.round)
   const isDone = (r: Row) => !!entryOf(r)?.done
-  // al entrar, va al primer ejercicio con rondas pendientes
-  useEffect(() => {
-    if (at == null && data && steps.length) setAt(Math.max(0, steps.findIndex((s) => s.rows.some((r) => !isDone(r)))))
-  }, [data, steps]) // eslint-disable-line react-hooks/exhaustive-deps
-
   if (data === undefined) return <main className="page" aria-busy="true" />
   if (data === null) return <main className="page"><p>Ese entreno ya no existe.</p><Link className="btn gap-top" to="/">Volver a Hoy</Link></main>
   const { session, tree, entries, history } = data
@@ -53,19 +47,16 @@ export default function SessionMode() {
       <button className="iconbtn" aria-label="Más acciones del entreno" onClick={() => setMenu(true)}><Icon name="more" /></button>
     </header>
   )
-  const step = steps[at ?? 0]
-  if (!step) return (
+  if (!steps.length) return (
     <main className="page session">
       {head}
       <div className="card empty grow-center"><p><strong>Esta rutina no tiene ejercicios.</strong></p><Link className="btn" to={`/programa/rutina/${tree.routine.id}`}>Editar rutina</Link></div>
     </main>
   )
 
-  const idx = at ?? 0
-  const superset = step.exs.length > 1
-  const total = steps.reduce((n, s) => n + s.rows.length, 0)
-  const doneCount = steps.reduce((n, s) => n + s.rows.filter(isDone).length, 0)
-  const nextRow = step.rows.find((r) => !isDone(r))
+  const total = steps.reduce((n, st) => n + st.rows.length, 0)
+  const doneCount = steps.reduce((n, st) => n + st.rows.filter(isDone).length, 0)
+  const nextRow = steps.flatMap((st) => st.rows).find((r) => !isDone(r))
   /** Lo de la última vez que se hizo este ejercicio antes de esta fecha (en cualquier rutina). */
   const prevOf = (ex: Exercise) => {
     const before = history.filter((e) => e.exerciseId === ex.id && e.date < session.date)
@@ -90,7 +81,6 @@ export default function SessionMode() {
     }
     toast(n ? 'Rondas rellenadas con lo anterior: tocá cada una para confirmarla' : 'No había nada para copiar')
   }
-  const restMs = parseRest(step.block.restLabel)
   const cellEntry = cell ? entryOf(cell) : undefined
   const cellPrefill = (r: Row): Entry | undefined =>
     prevOf(r.ex).find((e) => e.round === r.round) ?? [...entries].filter((e) => e.exerciseId === r.ex.id && e.round < r.round && hasValues(e)).sort((a, b) => b.round - a.round)[0] ?? prevOf(r.ex).pop()
@@ -98,60 +88,72 @@ export default function SessionMode() {
   return (
     <main className="page session">
       {head}
-      <div>
-        <p className="muted small">{superset ? 'Superserie' : 'Ejercicio'} {idx + 1} de {steps.length} · {doneCount} de {total} series</p>
+      <div className="sprog">
+        <p className="muted small"><strong className="num">{doneCount}</strong> de {total} series</p>
         <Bar value={doneCount} max={total} label="Series hechas" />
       </div>
 
-      {step.exs.map((ex) => {
-        const fields = fieldsFor(ex)
-        const prev = prevOf(ex)
-        const rec = recordOf(ex)
+      {steps.map((step, i) => {
+        const superset = step.exs.length > 1
+        const restMs = parseRest(step.block.restLabel)
+        const showRest = !!step.block.restLabel && !step.block.noRest
         return (
-          <section key={ex.id} className="session-info" aria-live="polite">
-            <h2>{ex.name}</h2>
-            <p><Chip>{cap(ex.kind)}</Chip> <span className="muted">Objetivo: {fmtTarget(ex.target)}{step.block.restLabel ? ` · Rest ${step.block.restLabel}` : ''}</span></p>
-            {ex.linkUrl && <button className="textbtn" onClick={() => setLink(ex)}><Icon name="play" size={18} />Ver video</button>}
-            {ex.note && <p className="small">📝 {ex.note}</p>}
-            <div className="prevrow">
-              <span className="muted small">Anterior: <strong className="num">{prev.length ? prev.map((e) => fmtEntry(e, fields)).join(' · ') : '—'}</strong></span>
-              <button className="btn compact" disabled={!prev.length} onClick={() => copyPrev(ex)}><Icon name="copy" size={20} />Copiar anterior</button>
-            </div>
-            {rec && <p className="small" role="status">🏆 R{rec.round}: récord personal ({fmtEntry(rec, fields, true)})</p>}
-          </section>
+          <Fragment key={step.block.id}>
+            {step.block.heading && <h2 className="rowheading">{step.block.heading}</h2>}
+            <section className="card sblock" aria-label={superset ? 'Superserie' : step.exs[0].name}>
+              {superset && <p className="blocktag"><span><Icon name="link" size={14} /> Superserie · alternan por ronda</span></p>}
+              {step.exs.map((ex) => {
+                const fields = fieldsFor(ex)
+                const prev = prevOf(ex)
+                const rec = recordOf(ex)
+                return (
+                  <div key={ex.id} className="sinfo">
+                    <div className="sinfo-top">
+                      <h2>{ex.name}</h2>
+                      <span className="sinfo-tools">
+                        {ex.note && <span className="iconbtn static" title={ex.note} aria-label={`Nota: ${ex.note}`}><Icon name="note" size={20} /></span>}
+                        {ex.linkUrl && <button className="iconbtn" aria-label={`Ver video de ${ex.name}`} onClick={() => setLink(ex)}><Icon name="play" size={22} /></button>}
+                      </span>
+                    </div>
+                    <p className="muted small">{cap(ex.kind)} · Objetivo {fmtTarget(ex.target)}</p>
+                    {ex.note && <p className="small snote">{ex.note}</p>}
+                    <div className="prevrow">
+                      <span className="muted small">Anterior: <strong className="num">{prev.length ? prev.map((e) => fmtEntry(e, fields)).join(' · ') : '—'}</strong></span>
+                      <button className="btn compact" disabled={!prev.length} onClick={() => copyPrev(ex)}><Icon name="copy" size={18} />Copiar</button>
+                    </div>
+                    {rec && <p className="small" role="status">🏆 R{rec.round}: récord personal ({fmtEntry(rec, fields, true)})</p>}
+                  </div>
+                )
+              })}
+              <ul className="list srows">
+                {step.rows.map((r) => {
+                  const e = entryOf(r)
+                  const done = !!e?.done
+                  const txt = fmtEntry(e, fieldsFor(r.ex), true)
+                  return (
+                    <li key={`${r.ex.id}-${r.round}`}>
+                      <button className={'srow' + (done ? ' done' : '') + (r === nextRow ? ' next' : '')} onClick={() => setCell(r)}
+                        aria-label={`Ronda ${r.round}${superset ? ` de ${r.ex.name}` : ''}: ${txt === '—' ? 'sin cargar' : txt}, ${done ? 'hecha' : 'pendiente'}. Cargar`}>
+                        <span className="srow-r">R{r.round}{superset && <span className="muted small"> · {r.ex.name}</span>}</span>
+                        <span className={'srow-v num' + (e && !done ? ' pending' : '')}>{txt === '—' ? <span className="muted">cargar</span> : txt}{e?.note ? ' 📝' : ''}</span>
+                        <span className="srow-c" aria-hidden="true">{done && <Icon name="check" size={20} />}</span>
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            </section>
+            {showRest && i < steps.length - 1 && (
+              <button className="restdiv" onClick={() => (restMs ? sw.countdown(restMs) : sw.open())}>
+                <Icon name="timer" size={18} />Descanso {step.block.restLabel} · <strong>{sw.badge ? <span className="num">{sw.badge}</span> : 'Iniciar'}</strong>
+              </button>
+            )}
+          </Fragment>
         )
       })}
 
-      <ul className="list srows">
-        {step.rows.map((r) => {
-          const e = entryOf(r)
-          const done = !!e?.done
-          const txt = fmtEntry(e, fieldsFor(r.ex), true)
-          return (
-            <li key={`${r.ex.id}-${r.round}`}>
-              <button className={'srow' + (done ? ' done' : '') + (r === nextRow ? ' next' : '')} onClick={() => setCell(r)}
-                aria-label={`Ronda ${r.round}${superset ? ` de ${r.ex.name}` : ''}: ${txt === '—' ? 'sin cargar' : txt}, ${done ? 'hecha' : 'pendiente'}. Cargar`}>
-                <span className="srow-r">R{r.round}{superset && <span className="muted small"> · {r.ex.name}</span>}</span>
-                <span className={'srow-v num' + (e && !done ? ' pending' : '')}>{txt === '—' ? <span className="muted">cargar</span> : txt}{e?.note ? ' 📝' : ''}</span>
-                <span className="srow-c" aria-hidden="true">{done && <Icon name="check" size={20} />}</span>
-              </button>
-            </li>
-          )
-        })}
-      </ul>
-
-      {step.block.restLabel && (
-        <div className="restbox">
-          <span><Icon name="timer" size={20} /> Descanso sugerido: <strong>{step.block.restLabel}</strong></span>
-          <button className="btn compact" onClick={() => (restMs ? sw.countdown(restMs) : sw.open())}>{sw.badge ? <span className="num">{sw.badge}</span> : 'Abrir cronómetro'}</button>
-        </div>
-      )}
-
       <footer className="sessionbar">
-        <button className="btn grow" disabled={idx === 0} onClick={() => setAt(idx - 1)}><Icon name="back" size={20} />Anterior</button>
-        {idx < steps.length - 1
-          ? <button className={'btn grow' + (nextRow ? '' : ' primary')} onClick={() => setAt(idx + 1)}>Siguiente<Icon name="next" size={20} /></button>
-          : <button className="btn primary grow" onClick={finish}><Icon name="check" size={20} />Terminar entreno</button>}
+        <button className="btn primary grow" onClick={finish}><Icon name="check" size={20} />Terminar entreno</button>
       </footer>
 
       {cell && (
@@ -165,7 +167,6 @@ export default function SessionMode() {
           <div className="menu">
             <button className="btn block" onClick={() => { setMenu(false); setNoting(true) }}><Icon name="note" />Nota del entreno</button>
             <Link className="btn block" to={back}>Ver grilla</Link>
-            <button className="btn primary block" onClick={finish}><Icon name="check" />Terminar entreno</button>
           </div>
         </Sheet>
       )}

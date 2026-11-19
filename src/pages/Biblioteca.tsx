@@ -111,7 +111,7 @@ export function Ficha() {
   const last = points[points.length - 1], before = points[points.length - 2]
   const diff = last && before ? last.best - before.best : 0
   const remove = async () => {
-    if (history.length && !(await confirmDialog({ title: `Borrar "${lib.name}"`, body: 'También se borra su historial de series.', ok: 'Borrar' }))) return
+    if (!(await confirmDialog({ title: `Borrar "${lib.name}"`, body: history.length ? 'También se borra su historial de series.' : 'Se borra de la biblioteca.', ok: 'Borrar' }))) return
     const r = await deleteLibExercise(id)
     if (r === 'used') return toast('Primero quitalo de las rutinas que lo usan')
     nav('/biblioteca', { replace: true })

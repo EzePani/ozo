@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import type { Field, TimeUnit, Undo } from './data'
-import { FIELD_LABEL, fieldUnit, fmtDate, monthLabel, shiftMonth, type Draft } from './lib'
+import { FIELD_LABEL, fieldUnit, fmtDate, monthLabel, shiftMonth, thisMonth, type Draft } from './lib'
 
 // ---------- íconos (trazo simple) ----------
 const PATHS: Record<string, string> = {
@@ -10,6 +10,8 @@ const PATHS: Record<string, string> = {
   sliders: 'M4 7h10M18 7h2M4 17h2M10 17h10M16 4v6M8 14v6',
   plus: 'M12 5v14M5 12h14',
   back: 'M15 5l-7 7 7 7',
+  link: 'M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1',
+  unlink: 'M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1M4 4l16 16',
   next: 'M9 5l7 7-7 7',
   grip: 'M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01',
   more: 'M5 12h.01M12 12h.01M19 12h.01',
@@ -127,9 +129,14 @@ export function useIsDesktop() {
 
 // ---------- piezas de página ----------
 export function PageHead({ title, back, children }: { title: ReactNode; back?: string; children?: ReactNode }) {
+  const nav = useNavigate()
+  // Vuelve a la pantalla anterior real; `back` es solo el destino si se entró directo a esta página.
+  const goBack = (e: React.MouseEvent) => {
+    if (((window.history.state as { idx?: number } | null)?.idx ?? 0) > 0) { e.preventDefault(); nav(-1) }
+  }
   return (
     <header className="pagehead">
-      {back && <Link to={back} className="iconbtn" aria-label="Volver"><Icon name="back" /></Link>}
+      {back && <Link to={back} onClick={goBack} className="iconbtn" aria-label="Volver"><Icon name="back" /></Link>}
       <h1>{title}</h1>
       {children}
       {!back && <Link to="/ajustes" className="iconbtn onlymobile" aria-label="Ajustes"><Icon name="sliders" /></Link>}
@@ -141,7 +148,10 @@ export function MonthNav({ month, onChange }: { month: string; onChange: (m: str
   return (
     <div className="monthnav">
       <button className="iconbtn" aria-label="Mes anterior" onClick={() => onChange(shiftMonth(month, -1))}><Icon name="back" /></button>
-      <strong aria-live="polite">{monthLabel(month)}</strong>
+      <div className="monthmid">
+        <strong aria-live="polite">{monthLabel(month)}</strong>
+        {month !== thisMonth() && <button className="pill" onClick={() => onChange(thisMonth())}>Ir a este mes</button>}
+      </div>
       <button className="iconbtn" aria-label="Mes siguiente" onClick={() => onChange(shiftMonth(month, 1))}><Icon name="next" /></button>
     </div>
   )

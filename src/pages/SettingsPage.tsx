@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { addCustomKind, addRoutineType, clearAll, exportAll, getSettings, patchSettings, restoreAll, todayISO, useLive, type Theme } from '../data'
+import { addCustomKind, addRoutineType, clearAll, exportAll, getSettings, patchSettings, renameType, restoreAll, todayISO, typeUsage, useLive, type Theme } from '../data'
 import { cap, fmtDate, validateBackup } from '../lib'
 import { Icon, PageHead, Seg, confirmDialog, toast } from '../ui'
 
@@ -40,15 +40,33 @@ function BackupButtons() {
   )
 }
 
-function TagList({ items, empty, label, onRemove, onAdd }: { items: string[]; empty: string; label: string; onRemove: (k: string) => void; onAdd: (name: string) => Promise<unknown> }) {
+function TagList({ scope, items, empty, label, onRemove, onAdd }: { scope: 'routine' | 'kind'; items: string[]; empty: string; label: string; onRemove: (k: string) => void; onAdd: (name: string) => Promise<unknown> }) {
   const [name, setName] = useState('')
+  const [renaming, setRenaming] = useState<string | null>(null)
+  const [newName, setNewName] = useState('')
+  const rename = (k: string) => { setRenaming(k); setNewName(k) }
+  const remove = async (k: string) => {
+    const n = await typeUsage(scope, k)
+    if (n && !(await confirmDialog({ title: `Quitar "${k}"`, body: `${n} ${scope === 'routine' ? (n === 1 ? 'rutina lo usa' : 'rutinas lo usan') : (n === 1 ? 'ejercicio lo usa' : 'ejercicios lo usan')}. Siguen con ese nombre, pero ya no aparece en la lista para elegir. Para cambiarlo en todos, usá Renombrar.`, ok: 'Quitar' }))) return
+    if (!n && !(await confirmDialog({ title: `Quitar "${k}"`, ok: 'Quitar' }))) return
+    onRemove(k)
+  }
   return (
     <div className="card stack">
+      {renaming && (
+        <form className="row" onSubmit={async (e) => { e.preventDefault(); const r = await renameType(scope, renaming, newName); if (r === 'exists') return toast('Ya existe un tipo con ese nombre'); setRenaming(null); toast('Tipo renombrado en todo lo que lo usa') }}>
+          <input className="input grow" autoFocus value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={20} aria-label={`Nuevo nombre para ${renaming}`} />
+          <button className="btn primary" disabled={!newName.trim()}>Guardar</button>
+          <button type="button" className="btn" onClick={() => setRenaming(null)}>Cancelar</button>
+        </form>
+      )}
       {items.length === 0 && <p className="muted">{empty}</p>}
       {items.length > 0 && (
         <ul className="plain">
           {items.map((k) => (
-            <li key={k} className="line"><span>{cap(k)}</span><button className="iconbtn" aria-label={`Quitar ${k}`} onClick={() => onRemove(k)}><Icon name="trash" /></button></li>
+            <li key={k} className="line"><span className="grow">{cap(k)}</span>
+              <button className="iconbtn" aria-label={`Renombrar ${k}`} onClick={() => rename(k)}><Icon name="edit" /></button>
+              <button className="iconbtn" aria-label={`Quitar ${k}`} onClick={() => remove(k)}><Icon name="trash" /></button></li>
           ))}
         </ul>
       )}
@@ -102,11 +120,11 @@ export default function SettingsPage() {
       </div>
 
       <h2 className="sect">Tipos de rutina propios</h2>
-      <TagList items={types} empty="No creaste tipos de rutina propios." label="Nombre del tipo de rutina nuevo"
+      <TagList scope="routine" items={types} empty="No creaste tipos de rutina propios." label="Nombre del tipo de rutina nuevo"
         onRemove={(k) => patchSettings({ routineTypes: types.filter((x) => x !== k) })} onAdd={addRoutineType} />
 
       <h2 className="sect">Tipos de ejercicio propios</h2>
-      <TagList items={kinds} empty="No creaste tipos de ejercicio propios." label="Nombre del tipo de ejercicio nuevo"
+      <TagList scope="kind" items={kinds} empty="No creaste tipos de ejercicio propios." label="Nombre del tipo de ejercicio nuevo"
         onRemove={(k) => patchSettings({ customKinds: kinds.filter((x) => x !== k) })} onAdd={addCustomKind} />
 
       <h2 className="sect">Datos</h2>

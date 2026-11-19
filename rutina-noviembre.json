@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "routine": { "name": "Lower · Noviembre", "type": "Lower", "goal": "" },
+  "blocks": [
+    {
+      "kind": "single",
+      "rest": "",
+      "exercises": [
+        { "name": "Step-up cajón alto", "kind": "fuerza", "muscleGroup": "Piernas", "rounds": 3, "target": { "type": "range", "min": 8, "max": 10, "unit": "rep" }, "note": "" }
+      ]
+    },
+    {
+      "kind": "single",
+      "rest": "",
+      "exercises": [
+        { "name": "Zancada atrás", "kind": "fuerza", "muscleGroup": "Glúteos", "rounds": 2, "target": { "type": "range", "min": 8, "max": 10, "unit": "rep" }, "note": "" }
+      ]
+    },
+    {
+      "kind": "single",
+      "rest": "3'–5'",
+      "exercises": [
+        { "name": "Tibial pared", "kind": "fuerza", "muscleGroup": "Piernas", "rounds": 2, "target": { "type": "range", "min": 15, "max": 20, "unit": "rep" }, "note": "" }
+      ]
+    },
+    {
+      "kind": "single",
+      "rest": "3'–5'",
+      "exercises": [
+        { "name": "Plancha lateral", "kind": "core", "muscleGroup": "Core", "timeUnit": "s", "rounds": 2, "target": { "type": "time", "min": 30, "perSide": true }, "note": "" }
+      ]
+    },
+    {
+      "kind": "single",
+      "rest": "3'–5'",
+      "exercises": [
+        { "name": "Cinta inclinada + mochila", "kind": "cardio", "muscleGroup": "Cardio", "timeUnit": "min", "rounds": 1, "target": { "type": "time", "min": 1200 }, "note": "" }
+      ]
+    }
+  ]
+}

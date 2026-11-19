@@ -56,6 +56,16 @@ export async function getRoutineCards() {
 export async function createRoutine(name: string, type: string) {
   return db.routines.add({ name: name.trim(), type, order: await db.routines.count() })
 }
+/** Sube o baja una rutina en la lista (renumera para que el orden quede siempre limpio). */
+export async function moveRoutine(id: number, dir: -1 | 1) {
+  await db.transaction('rw', db.routines, async () => {
+    const all = await getRoutines()
+    const i = all.findIndex((r) => r.id === id), j = i + dir
+    if (i < 0 || j < 0 || j >= all.length) return
+    ;[all[i], all[j]] = [all[j], all[i]]
+    await db.routines.bulkPut(all.map((r, order) => ({ ...r, order })))
+  })
+}
 export const updateRoutine = (id: number, patch: Partial<Pick<Routine, 'name' | 'type'>>) => db.routines.update(id, patch)
 
 export async function duplicateRoutine(routineId: number) {
@@ -167,6 +177,23 @@ export async function ungroupExercises(routineId: number, ids: number[]) {
   await applyGroups(routineId, next)
 }
 
+/** Une en una superserie el ejercicio `aId` (y su bloque) con el que sigue, `bId` (y su bloque). */
+export async function linkAdjacent(routineId: number, aId: number, bId: number) {
+  const groups = await currentGroups(routineId)
+  const i = groups.findIndex((g) => g.ids.includes(aId))
+  if (i < 0 || !groups[i + 1]?.ids.includes(bId)) return
+  const merged: Group = { kind: 'superset', restLabel: groups[i].restLabel, ids: [...groups[i].ids, ...groups[i + 1].ids] }
+  await applyGroups(routineId, [...groups.slice(0, i), merged, ...groups.slice(i + 2)])
+}
+/** Corta la superserie entre `aId` y `bId` (consecutivos). Lo que queda de un solo ejercicio vuelve a ser individual. */
+export async function splitBetween(routineId: number, aId: number, bId: number) {
+  const groups = await currentGroups(routineId)
+  const i = groups.findIndex((g) => g.ids.includes(aId) && g.ids.includes(bId))
+  if (i < 0) return
+  const g = groups[i], at = g.ids.indexOf(aId) + 1
+  await applyGroups(routineId, [...groups.slice(0, i), { ...g, blockId: g.blockId, ids: g.ids.slice(0, at) }, { ...g, blockId: undefined, ids: g.ids.slice(at) }, ...groups.slice(i + 1)])
+}
+
 /** Mueve un ejercicio a la posición `toIndex` de la lista plana. Si cae entre dos ejercicios de un mismo bloque, entra al bloque. */
 export async function moveExercise(routineId: number, itemId: number, toIndex: number) {
   const tree = await loadRoutine(routineId)
@@ -246,7 +273,18 @@ export async function addFromLibrary(routineId: number, exerciseId: number): Pro
 }
 
 export const updateItems = (itemIds: number[], patch: Partial<ItemDraft>) => db.routineItems.bulkUpdate(itemIds.map((key) => ({ key, changes: patch })))
-export const setRest = (blockIds: number[], restLabel: string) => db.blocks.bulkUpdate(blockIds.map((key) => ({ key, changes: { restLabel } })))
+export const setRest = (blockIds: number[], restLabel: string) => db.blocks.bulkUpdate(blockIds.map((key) => ({ key, changes: { restLabel, ...(restLabel ? { noRest: false } : {}) } })))
+/** Pone, cambia o quita (texto vacío) el título separador que va arriba de un bloque. */
+export async function setHeading(block: Block, text: string): Promise<Undo> {
+  const t = text.trim()
+  await db.blocks.update(block.id, { heading: t || undefined })
+  return async () => { await db.blocks.update(block.id, { heading: block.heading || undefined }) }
+}
+/** Quita (o vuelve a mostrar) la fila de descanso de un bloque, sin tocar sus ejercicios. */
+export async function setRestRow(block: Block, show: boolean): Promise<Undo> {
+  await db.blocks.update(block.id, show ? { noRest: false } : { noRest: true, restLabel: '' })
+  return async () => { await db.blocks.update(block.id, { noRest: !!block.noRest, restLabel: block.restLabel }) }
+}
 
 /** Quita ejercicios de la rutina. Sus registros quedan en el historial de la biblioteca. */
 export async function removeItems(routineId: number, itemIds: number[]): Promise<Undo> {
@@ -300,6 +338,27 @@ export async function removeRound(routineId: number, ex: Exercise, round: number
     await db.entries.bulkPut(before)
     await db.routineItems.update(ex.itemId, { rounds: ex.rounds })
   })
+}
+
+/** Inserta una ronda en la posición `at`: las que estaban desde ahí se corren un lugar en todas las semanas. */
+export async function insertRound(routineId: number, ex: Exercise, at: number) {
+  if (ex.rounds >= 20) return false
+  const all = await routineEntries(routineId, ex.id)
+  await db.transaction('rw', db.entries, db.routineItems, async () => {
+    const moved = all.filter((e) => e.round >= at)
+    await db.entries.bulkDelete(moved.map(keyOf))
+    await db.entries.bulkPut(moved.map((e) => ({ ...e, round: e.round + 1 })))
+    await db.routineItems.update(ex.itemId, { rounds: ex.rounds + 1 })
+  })
+  return true
+}
+
+/** Duplica una ronda justo debajo, con los mismos valores en todas las semanas (quedan como pendientes). */
+export async function duplicateRound(routineId: number, ex: Exercise, round: number) {
+  if (!(await insertRound(routineId, ex, round + 1))) return false
+  const copies = (await routineEntries(routineId, ex.id)).filter((e) => e.round === round).map((e): Entry => ({ ...e, round: round + 1, done: false }))
+  await db.entries.bulkPut(copies)
+  return true
 }
 
 // ---------- biblioteca ----------
@@ -369,15 +428,23 @@ export function programDates(month: string, weekday: number, weeks: number) {
   while (dateOf(d).getDay() !== weekday) d = addDays(d, 1)
   return Array.from({ length: weeks }, (_, i) => addDays(d, i * 7))
 }
+/** `weeks` fechas semanales: la primera es el primer `weekday` desde `start` (inclusive). */
+export function datesFrom(start: string, weekday: number, weeks: number) {
+  let d = start
+  while (dateOf(d).getDay() !== weekday) d = addDays(d, 1)
+  return Array.from({ length: weeks }, (_, i) => addDays(d, i * 7))
+}
 const sessionAt = (routineId: number, date: string) => db.sessions.where('[routineId+date]').equals([routineId, date]).first()
 
 /** Crea el programa y una sesión planificada por fecha. No duplica fechas que la rutina ya tenga. */
-export async function saveProgram(p: Omit<Program, 'id'>) {
+export async function saveProgram(input: Omit<Program, 'id'> & { start?: string }) {
+  const { start, ...p } = input
+  if (start) p.month = start.slice(0, 7)
   return db.transaction('rw', db.programs, db.sessions, async () => {
     const same = (await db.programs.where('routineId').equals(p.routineId).toArray()).find((x) => x.month === p.month && x.weekday === p.weekday)
     const programId = same?.id ?? (await db.programs.add(p))
     let created = 0, order = await db.sessions.where('programId').equals(programId).count()
-    for (const date of programDates(p.month, p.weekday, p.weeks)) {
+    for (const date of start ? datesFrom(start, p.weekday, p.weeks) : programDates(p.month, p.weekday, p.weeks)) {
       if (await sessionAt(p.routineId, date)) continue
       await db.sessions.add({ routineId: p.routineId, programId, date, status: 'planned', order: order++ })
       created++
@@ -415,6 +482,56 @@ export async function addWeek(programId: number) {
     while (await sessionAt(program.routineId, date)) date = addDays(date, 7)
     await db.programs.update(programId, { weeks: sessions.length + 1 })
     return db.sessions.add({ routineId: program.routineId, programId, date, status: 'planned', order: sessions.length })
+  })
+}
+
+/** Mueve todas las semanas al nuevo día (dentro de su misma semana lun–dom). 'taken' si choca con otra semana de la rutina. */
+export async function changeProgramWeekday(programId: number, weekday: number): Promise<'ok' | 'taken'> {
+  return db.transaction('rw', db.programs, db.sessions, async () => {
+    const program = await db.programs.get(programId)
+    if (!program) return 'ok'
+    const sessions = await programSessions(programId)
+    const moves = sessions.map((s) => ({ s, date: addDays(s.date, ((weekday + 6) % 7) - ((dateOf(s.date).getDay() + 6) % 7)) }))
+    const own = new Set(sessions.map((s) => s.id))
+    for (const m of moves) { const o = await sessionAt(program.routineId, m.date); if (o && !own.has(o.id)) return 'taken' }
+    for (const m of moves) await db.sessions.update(m.s.id, { date: m.date })
+    await db.programs.update(programId, { weekday })
+    return 'ok'
+  })
+}
+
+/** Mueve el programa a otro mes: la primera semana cae en el primer día elegido del mes nuevo y el resto sigue cada 7 días. */
+/** Cambia la fecha de inicio: la primera semana pasa a esa fecha (y el programa toma su día de la semana); las demás siguen cada 7 días. */
+export async function changeProgramStart(programId: number, iso: string): Promise<'ok' | 'taken'> {
+  return db.transaction('rw', db.programs, db.sessions, async () => {
+    const program = await db.programs.get(programId)
+    if (!program) return 'ok'
+    const sessions = await programSessions(programId)
+    const first = sessions[0]?.date ?? iso
+    const delta = Math.round((dateOf(iso).getTime() - dateOf(first).getTime()) / 86400000)
+    const moves = sessions.map((s) => ({ s, date: addDays(s.date, delta) }))
+    const own = new Set(sessions.map((s) => s.id))
+    for (const m of moves) { const o = await sessionAt(program.routineId, m.date); if (o && !own.has(o.id)) return 'taken' }
+    for (const m of moves) await db.sessions.update(m.s.id, { date: m.date })
+    await db.programs.update(programId, { weekday: dateOf(iso).getDay(), month: iso.slice(0, 7) })
+    return 'ok'
+  })
+}
+export async function changeProgramMonth(programId: number, month: string): Promise<'ok' | 'taken'> {
+  return db.transaction('rw', db.programs, db.sessions, async () => {
+    const program = await db.programs.get(programId)
+    if (!program) return 'ok'
+    if (program.month === month) return 'ok'
+    const sessions = await programSessions(programId)
+    const start = programDates(month, program.weekday, 1)[0]
+    const first = sessions.length ? sessions[0].date : start
+    const delta = Math.round((dateOf(start).getTime() - dateOf(first).getTime()) / 86400000)
+    const moves = sessions.map((s) => ({ s, date: addDays(s.date, delta) }))
+    const own = new Set(sessions.map((s) => s.id))
+    for (const m of moves) { const o = await sessionAt(program.routineId, m.date); if (o && !own.has(o.id)) return 'taken' }
+    for (const m of moves) await db.sessions.update(m.s.id, { date: m.date })
+    await db.programs.update(programId, { month })
+    return 'ok'
   })
 }
 
@@ -488,6 +605,53 @@ export async function saveEntry(sessionId: number, exerciseId: number, round: nu
   })
 }
 
+// ---------- edición de varias celdas a la vez ----------
+export interface CellRef { sessionId: number; exerciseId: number; round: number }
+export interface BulkOp { mode: 'set' | 'add'; weight?: number; reps?: number; durationSec?: number; distance?: number }
+const VALUE_KEYS = ['weight', 'reps', 'durationSec', 'distance'] as const
+const cellKey = (c: CellRef): [number, number, number] => [c.sessionId, c.exerciseId, c.round]
+
+/** Aplica un valor (fijar) o una diferencia (sumar/restar) a las celdas elegidas. Devuelve cuántas cambió y cómo deshacerlo. */
+export async function bulkEditEntries(cells: CellRef[], op: BulkOp, today: string): Promise<{ changed: number; undo: Undo }> {
+  const sessions = new Map((await db.sessions.bulkGet([...new Set(cells.map((c) => c.sessionId))])).filter(present).map((x) => [x.id, x]))
+  const before = new Map<string, Entry | undefined>()
+  const writes: Entry[] = []
+  await db.transaction('rw', db.entries, db.sessions, async () => {
+    for (const c of cells) {
+      const old = await db.entries.get(cellKey(c))
+      const next: Entry = { ...(old ?? { sessionId: c.sessionId, exerciseId: c.exerciseId, round: c.round, done: false }) }
+      let touched = false
+      for (const k of VALUE_KEYS) {
+        const v = op[k]
+        if (v == null) continue
+        if (op.mode === 'set') { next[k] = v; touched = true }
+        else if (old?.[k] != null) { next[k] = Math.max(0, Math.round((old[k]! + v) * 100) / 100); touched = true }
+      }
+      if (!touched) continue
+      const date = sessions.get(c.sessionId)?.date ?? today
+      next.done = !!old?.done || date <= today
+      before.set(cellKey(c).join('-'), old)
+      writes.push(next)
+    }
+    await db.entries.bulkPut(writes)
+    for (const sid of new Set(writes.filter((w) => w.done).map((w) => w.sessionId))) await db.sessions.update(sid, { status: 'done' })
+  })
+  const undo: Undo = async () => {
+    await db.transaction('rw', db.entries, async () => {
+      await db.entries.bulkDelete(writes.map((w) => cellKey(w)))
+      await db.entries.bulkPut([...before.values()].filter(present))
+    })
+  }
+  return { changed: writes.length, undo }
+}
+
+/** Vacía las celdas elegidas (valores y nota). */
+export async function clearEntries(cells: CellRef[]): Promise<{ cleared: number; undo: Undo }> {
+  const old = (await db.entries.bulkGet(cells.map(cellKey))).filter(present)
+  await db.entries.bulkDelete(old.map(cellKey))
+  return { cleared: old.length, undo: async () => { await db.entries.bulkPut(old) } }
+}
+
 export interface HistEntry extends Entry { date: string }
 /** Series hechas con su fecha. El historial es por ejercicio de biblioteca: lo comparten todas las rutinas. */
 export async function getHistory(exerciseIds?: number[]): Promise<HistEntry[]> {
@@ -523,6 +687,30 @@ export async function addCustomKind(name: string) {
   const s = await getSettings()
   if (!s.customKinds.includes(k)) await patchSettings({ customKinds: [...s.customKinds, k] })
 }
+/** Cuántas rutinas / ejercicios usan un tipo. */
+export async function typeUsage(scope: 'routine' | 'kind', name: string) {
+  const n = norm(name)
+  return scope === 'routine'
+    ? (await db.routines.toArray()).filter((r) => norm(r.type) === n).length
+    : (await db.library.toArray()).filter((l) => norm(l.kind) === n).length
+}
+/** Renombra un tipo propio y lo actualiza en todas las rutinas / ejercicios que lo usan. */
+export async function renameType(scope: 'routine' | 'kind', from: string, to: string): Promise<'ok' | 'exists'> {
+  const t = scope === 'routine' ? to.trim() : to.trim().toLowerCase()
+  if (!t) return 'ok'
+  const s = await getSettings()
+  const base = scope === 'routine' ? BASE_ROUTINE_TYPES : BASE_KINDS
+  const own = scope === 'routine' ? s.routineTypes : s.customKinds
+  if ([...base, ...own.filter((x) => x !== from)].some((x) => norm(x) === norm(t))) return 'exists'
+  await db.transaction('rw', db.settings, db.routines, db.library, async () => {
+    const next = own.map((x) => (x === from ? t : x))
+    await patchSettings(scope === 'routine' ? { routineTypes: next } : { customKinds: next })
+    if (scope === 'routine') await db.routines.filter((r) => r.type === from).modify({ type: t })
+    else await db.library.filter((l) => l.kind === from).modify({ kind: t })
+  })
+  return 'ok'
+}
+
 export async function addRoutineType(name: string) {
   const t = name.trim()
   const s = await getSettings()

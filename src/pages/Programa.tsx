@@ -1,7 +1,7 @@
 import { Link, useSearchParams } from 'react-router-dom'
-import { getGoals, getProgramCards, getRoutineCards, useLive } from '../data'
+import { getGoals, moveRoutine, getProgramCards, getRoutineCards, useLive } from '../data'
 import { WEEKDAYS, monthName, thisMonth, wdShort } from '../lib'
-import { Bar, Chip, Icon, MonthNav, PageHead } from '../ui'
+import { Bar, Chip, Icon, MonthNav, PageHead, confirmDialog } from '../ui'
 
 export default function Programa() {
   const [params, setParams] = useSearchParams()
@@ -44,12 +44,14 @@ export default function Programa() {
       <h2 className="sect">Rutinas</h2>
       {routines && routines.length === 0 && <p className="muted hint">Todavía no hay rutinas. Se crean al armar un programa.</p>}
       <ul className="card plain">
-        {routines?.map(({ routine, exercises }) => (
+        {routines?.map(({ routine, exercises }, i) => (
           <li key={routine.id} className="line">
             <Link className="linkrow grow" to={`/programa/rutina/${routine.id}`}>
               <strong>{routine.name}</strong> <Chip>{routine.type}</Chip><br />
               <span className="muted small">{exercises} {exercises === 1 ? 'ejercicio' : 'ejercicios'} · editar rutina</span>
             </Link>
+            <button className="minibtn" aria-label={`Subir ${routine.name}`} title="Subir" disabled={i === 0} onClick={async () => { if (await confirmDialog({ title: `Subir ${routine.name} en la lista`, ok: 'Subir' })) await moveRoutine(routine.id, -1) }}><Icon name="up" size={18} /></button>
+            <button className="minibtn" aria-label={`Bajar ${routine.name}`} title="Bajar" disabled={i === routines.length - 1} onClick={async () => { if (await confirmDialog({ title: `Bajar ${routine.name} en la lista`, ok: 'Bajar' })) await moveRoutine(routine.id, 1) }}><Icon name="down" size={18} /></button>
             <Link className="btn compact" to={`/programa/nuevo?rutina=${routine.id}&m=${month}`}>Programar</Link>
           </li>
         ))}

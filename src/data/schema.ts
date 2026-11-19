@@ -14,7 +14,8 @@ export interface Target {
 }
 /** Plantilla reutilizable (ej. "Lower A"). */
 export interface Routine { id: number; name: string; type: string; order: number }
-export interface Block { id: number; routineId: number; order: number; kind: 'single' | 'superset'; restLabel: string }
+/** `noRest`: se quitó la fila de descanso de este bloque (el ejercicio sigue). `heading`: fila separadora con título que va arriba del bloque. */
+export interface Block { id: number; routineId: number; order: number; kind: 'single' | 'superset'; restLabel: string; noRest?: boolean; heading?: string }
 /** Definición única de un ejercicio: su historial se comparte entre rutinas. */
 export interface LibExercise {
   id: number; name: string; norm: string; kind: string; muscleGroup: string; linkUrl: string; timeUnit: TimeUnit

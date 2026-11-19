@@ -4,7 +4,7 @@ import {
   type Block, type Exercise, type Field, type LibExercise, type RoutineTree, type Target, type TimeUnit,
 } from '../data'
 import { FIELD_LABEL, cap, fieldsFor, fmtNum, isFreeKind, parseLink } from '../lib'
-import { Chip, Icon, Seg, Sheet, Stepper, toast } from '../ui'
+import { Chip, Icon, Seg, Sheet, Stepper, confirmDialog, toast } from '../ui'
 
 /** Tipo de rutina: Lower, Upper… más los que haya creado el usuario. */
 export function TypePicker({ value, onChange }: { value: string | null; onChange: (t: string) => void }) {
@@ -223,7 +223,7 @@ export function AddExerciseSheet({ tree, onClose }: { tree: RoutineTree; onClose
       <ul className="plain">
         {list.map((l) => (
           <li key={l.id} className="line">
-            <button className="linkrow grow" onClick={async () => { await addFromLibrary(tree.routine.id, l.id); toast(`${l.name} agregado`); onClose() }}>
+            <button className="linkrow grow" onClick={async () => { if (!(await confirmDialog({ title: `Agregar "${l.name}" a la rutina`, ok: 'Agregar' }))) return; await addFromLibrary(tree.routine.id, l.id); toast(`${l.name} agregado`); onClose() }}>
               <strong>{l.name}</strong> <Chip>{cap(l.kind)}</Chip>{l.muscleGroup && <span className="muted small"> · {l.muscleGroup}</span>}
             </button>
           </li>

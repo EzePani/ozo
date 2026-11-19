@@ -1,19 +1,19 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import {
-  deleteRoutine, duplicateItems, duplicateRoutine, groupExercises, loadRoutine, moveExercise, removeItems, setRest, ungroupExercises, updateItems, updateRoutine, useLive,
+  deleteRoutine, duplicateItems, duplicateRoutine, groupExercises, linkAdjacent, loadRoutine, moveExercise, removeItems, setRest, splitBetween, ungroupExercises, updateItems, updateRoutine, useLive,
   type FlatRow, type RoutineTree, type Target,
 } from '../data'
 import { cap, fmtTarget } from '../lib'
-import { Chip, Icon, PageHead, Sheet, Stepper, confirmDialog, toast, toastUndo } from '../ui'
+import { Chip, Icon, NoteSheet, PageHead, Sheet, Stepper, confirmDialog, toast, toastUndo } from '../ui'
 import { AddExerciseSheet, ExerciseEditor, TargetEditor, TypePicker, cleanTarget } from './ExerciseEditor'
 import { LinkSheet } from '../LinkSheet'
 
-function Row({ row, selecting, selected, onTap, onLongPress, onLink }: {
-  row: FlatRow; selecting: boolean; selected: boolean; onTap: () => void; onLongPress: () => void; onLink: () => void
+function Row({ row, selecting, selected, onTap, onLongPress, onLink, onRest }: {
+  row: FlatRow; selecting: boolean; selected: boolean; onTap: () => void; onLongPress: () => void; onLink: () => void; onRest: () => void
 }) {
   const { ex, block, pos } = row
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: ex.itemId, disabled: selecting })
@@ -23,7 +23,11 @@ function Row({ row, selecting, selected, onTap, onLongPress, onLink }: {
   return (
     <li ref={setNodeRef} style={{ transform: CSS.Translate.toString(transform), transition }}
       className={`exrow pos-${pos}` + (isDragging ? ' dragging' : '') + (selected ? ' selected' : '')}>
-      {pos === 'first' && <div className="blocktag">SUPERSERIE · alternan por ronda · Rest {block.restLabel || '—'}</div>}
+      {block.heading && (pos === 'single' || pos === 'first') && <div className="rowheading">{block.heading}</div>}
+      {pos === 'first' && (
+        <div className="blocktag"><span><Icon name="link" size={14} /> Superserie · alternan por ronda</span>
+          <button className="pill rest" onClick={onRest} aria-label="Editar descanso de la superserie">{block.noRest ? '+ Descanso' : `Rest ${block.restLabel || '—'}`}</button></div>
+      )}
       <div className="exrow-in">
         {selecting
           ? <span className="selmark" aria-hidden="true">{selected ? <Icon name="check" /> : null}</span>
@@ -38,9 +42,10 @@ function Row({ row, selecting, selected, onTap, onLongPress, onLink }: {
           onContextMenu={(e) => e.preventDefault()}
           onClick={() => { if (lp.current.fired) lp.current.fired = false; else onTap() }}>
           <span className="exrow-name">{ex.name} <Chip>{cap(ex.kind)}</Chip></span>
-          <span className="muted">{ex.rounds} × {fmtTarget(ex.target)}{pos === 'single' && block.restLabel ? ` · Rest ${block.restLabel}` : ''}</span>
+          <span className="muted">{ex.rounds} × {fmtTarget(ex.target)}</span>
           {ex.note && <span className="muted small">📝 {ex.note}</span>}
         </button>
+        {!selecting && pos === 'single' && <span role="button" tabIndex={0} className="pill rest" onClick={onRest} onKeyDown={(e) => e.key === 'Enter' && onRest()} aria-label="Editar descanso">{block.noRest ? '+ Descanso' : `Rest ${block.restLabel || '—'}`}</span>}
         {!selecting && ex.linkUrl && <button className="iconbtn" aria-label={`Ver video de ${ex.name}`} onClick={onLink}><Icon name="play" /></button>}
       </div>
     </li>
@@ -81,6 +86,7 @@ export default function RoutineEditor() {
   const [adding, setAdding] = useState(false)
   const [bulk, setBulk] = useState(false)
   const [meta, setMeta] = useState(false)
+  const [restOf, setRestOf] = useState<number | null>(null)
   const [name, setName] = useState('')
   const [link, setLink] = useState<FlatRow | null>(null)
   const [optimistic, setOptimistic] = useState<number[] | null>(null)
@@ -101,8 +107,9 @@ export default function RoutineEditor() {
     setOptimistic(arrayMove(tree.flat.map((f) => f.ex.itemId), from, to))
     await moveExercise(routineId, active.id as number, to)
   }
-  const act = async (fn: () => Promise<unknown>, msg?: string) => { await fn(); setSel(null); if (msg) toast(msg) }
+  const act = async (fn: () => Promise<unknown>, msg?: string) => { if (!(await confirmDialog({ title: `${msg ?? 'Aplicar'} (${ids.length} ${ids.length === 1 ? 'ejercicio' : 'ejercicios'})`, ok: 'Confirmar' }))) return; await fn(); setSel(null); if (msg) toast(msg) }
   const remove = async () => {
+    if (!(await confirmDialog({ title: `Quitar ${ids.length} ${ids.length === 1 ? 'ejercicio' : 'ejercicios'} de la rutina`, body: 'Siguen en la biblioteca y sus registros no se pierden.', ok: 'Quitar' }))) return
     const undo = await removeItems(routineId, ids)
     setSel(null)
     toastUndo(`${ids.length} ${ids.length === 1 ? 'ejercicio quitado' : 'ejercicios quitados'} de la rutina`, undo)
@@ -120,17 +127,32 @@ export default function RoutineEditor() {
         <button className="iconbtn" aria-label="Nombre, tipo y más acciones de la rutina" onClick={() => { setName(tree.routine.name); setMeta(true) }}><Icon name="more" /></button>
       </PageHead>
       {tree.flat.length === 0 && <div className="card empty"><p><strong>Esta rutina está vacía.</strong></p><p className="muted">Agregá el primer ejercicio.</p></div>}
-      {tree.flat.length > 0 && !sel && <p className="muted small hint">Tocá para editar. Mantené presionado para seleccionar varios y agruparlos en superserie. Arrastrá desde los puntos para reordenar. Lo que armes acá vale para todas las semanas.</p>}
+      {tree.flat.length > 0 && !sel && <p className="muted small hint">Tocá un ejercicio para editarlo · <Icon name="link" size={14} /> entre dos ejercicios los une en superserie · arrastrá los puntos para reordenar. Vale para todas las semanas.</p>}
       {sel && <p className="hint" role="status"><strong>{ids.length} {ids.length === 1 ? 'seleccionado' : 'seleccionados'}</strong></p>}
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         <SortableContext items={rows.map((r) => r.ex.itemId)} strategy={verticalListSortingStrategy}>
           <ul className="list tight">
-            {rows.map((r) => (
-              <Row key={r.ex.itemId} row={r} selecting={!!sel} selected={!!sel?.has(r.ex.itemId)}
-                onTap={() => (sel ? toggle(r.ex.itemId) : setEditing(r))}
-                onLongPress={() => setSel((s) => new Set(s ?? []).add(r.ex.itemId))}
-                onLink={() => setLink(r)} />
-            ))}
+            {rows.map((r, i) => {
+              const next = rows[i + 1]
+              const joined = !!next && next.block.id === r.block.id && r.block.kind === 'superset'
+              return (
+                <Fragment key={r.ex.itemId}>
+                  <Row row={r} selecting={!!sel} selected={!!sel?.has(r.ex.itemId)}
+                    onTap={() => (sel ? toggle(r.ex.itemId) : setEditing(r))}
+                    onLongPress={() => setSel((s) => new Set(s ?? []).add(r.ex.itemId))}
+                    onLink={() => setLink(r)} onRest={() => setRestOf(r.block.id)} />
+                  {next && !sel && !optimistic && (
+                    <li className={'seam' + (next.pos === 'single' || next.pos === 'first' ? ' gap' : '')}>
+                      <button className={'seambtn' + (joined ? ' on' : '')} title={joined ? 'Separar' : 'Unir en superserie'}
+                        aria-label={joined ? `Separar ${r.ex.name} de ${next.ex.name}` : `Unir ${r.ex.name} con ${next.ex.name} en superserie`}
+                        onClick={async () => { if (!(await confirmDialog({ title: joined ? `Separar ${r.ex.name} de ${next.ex.name}` : `Unir ${r.ex.name} con ${next.ex.name} en superserie`, ok: joined ? 'Separar' : 'Unir' }))) return; if (joined) await splitBetween(routineId, r.ex.itemId, next.ex.itemId); else await linkAdjacent(routineId, r.ex.itemId, next.ex.itemId) }}>
+                        <Icon name={joined ? 'unlink' : 'link'} size={16} />
+                      </button>
+                    </li>
+                  )}
+                </Fragment>
+              )
+            })}
           </ul>
         </SortableContext>
       </DndContext>
@@ -153,17 +175,20 @@ export default function RoutineEditor() {
 
       {meta && (
         <Sheet title="Rutina" onClose={() => setMeta(false)} tall>
-          <form className="form" onSubmit={async (e) => { e.preventDefault(); if (name.trim()) { await updateRoutine(routineId, { name: name.trim() }); setMeta(false) } }}>
+          <form className="form" onSubmit={async (e) => { e.preventDefault(); if (name.trim()) { await updateRoutine(routineId, { name: name.trim() }); setMeta(false); toast('Nombre guardado') } }}>
             <label className="lbl">Nombre
-              <div className="row"><input className="input grow" value={name} onChange={(e) => setName(e.target.value)} maxLength={30} /><button className="btn" disabled={!name.trim() || name.trim() === tree.routine.name}>Guardar</button></div>
+              <div className="row"><input className="input grow" value={name} onChange={(e) => setName(e.target.value)} maxLength={30} /><button className="btn primary" disabled={!name.trim() || name.trim() === tree.routine.name}>Guardar</button></div>
             </label>
-            <div className="lbl">Tipo<TypePicker value={tree.routine.type} onChange={(type) => updateRoutine(routineId, { type })} /></div>
-            <Link className="btn block" to={`/programa/nuevo?rutina=${routineId}`}><Icon name="calendar" />Programar esta rutina en un mes</Link>
-            <button type="button" className="btn block" onClick={async () => { const id = await duplicateRoutine(routineId); setMeta(false); if (id) { toast('Rutina duplicada'); nav(`/programa/rutina/${id}`) } }}><Icon name="copy" />Duplicar rutina</button>
-            <button type="button" className="btn block danger" onClick={() => { setMeta(false); void removeRoutine() }}><Icon name="trash" />Borrar rutina</button>
+            <div className="lbl">Tipo<TypePicker value={tree.routine.type} onChange={async (type) => { if (type !== tree.routine.type && (await confirmDialog({ title: `Cambiar el tipo a "${type}"`, ok: 'Cambiar' }))) await updateRoutine(routineId, { type }) }} /></div>
           </form>
+          <div className="mrows">
+            <Link className="mrow" to={`/programa/nuevo?rutina=${routineId}`}><Icon name="calendar" size={20} />Programar en un mes</Link>
+            <button type="button" className="mrow" onClick={async () => { if (!(await confirmDialog({ title: `Duplicar la rutina "${tree.routine.name}"`, ok: 'Duplicar' }))) return; const id = await duplicateRoutine(routineId); setMeta(false); if (id) { toast('Rutina duplicada'); nav(`/programa/rutina/${id}`) } }}><Icon name="copy" size={20} />Duplicar rutina</button>
+            <button type="button" className="mrow danger" onClick={() => { setMeta(false); void removeRoutine() }}><Icon name="trash" size={20} />Borrar rutina</button>
+          </div>
         </Sheet>
       )}
+      {restOf != null && <NoteSheet title="Descanso" hint={'Texto libre: 3\'–5\', 4\', 60", Continue…'} value={tree.blocks.find((b) => b.id === restOf)?.restLabel ?? ''} onSave={(t) => setRest([restOf], t.trim())} onClose={() => setRestOf(null)} />}
       {editing && <ExerciseEditor routineId={routineId} exercise={editing.ex} block={editing.block} onClose={() => setEditing(null)} />}
       {adding && <AddExerciseSheet tree={tree} onClose={() => setAdding(false)} />}
       {bulk && <BulkEdit ids={ids} tree={tree} onClose={() => setBulk(false)} />}

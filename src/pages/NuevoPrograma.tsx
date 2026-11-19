@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { countNewExercises, createRoutine, getGoals, getRoutines, getSessions, importRoutine, norm, programDates, saveGoal, saveProgram, updateRoutine, useLive } from '../data'
+import { countNewExercises, createRoutine, getGoals, getRoutines, getSessions, datesFrom, importRoutine, norm, saveGoal, saveProgram, updateRoutine, useLive } from '../data'
 import { CLAUDE_PROMPT, WD_ORDER, WEEKDAYS, copyText, fmtDay, listDates, thisMonth, validateRoutine, wdShort } from '../lib'
-import { Icon, MonthNav, PageHead, Seg, Stepper, toast } from '../ui'
+import { todayISO } from '../data'
+import { DateField, Icon, PageHead, Seg, Stepper, toast } from '../ui'
 import { TypePicker } from './ExerciseEditor'
 
 type Source = 'json' | 'existing' | 'empty'
@@ -23,7 +24,8 @@ export default function NuevoPrograma() {
   const [name, setName] = useState('')
   const [type, setType] = useState<string | null>(null)
   const [weekday, setWeekday] = useState<number | null>(null)
-  const [month, setMonth] = useState(params.get('m') ?? thisMonth())
+  const m0 = params.get('m')
+  const [start, setStart] = useState(!m0 || m0 === thisMonth() ? todayISO() : `${m0}-01`)
   const [weeks, setWeeks] = useState(4)
   const [custom, setCustom] = useState(false)
   const [goal, setGoal] = useState('')
@@ -45,7 +47,8 @@ export default function NuevoPrograma() {
     if (g) setGoal(g.text)
   }, [existing?.id, goals?.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const dates = weekday != null ? programDates(month, weekday, weeks) : []
+  const month = start.slice(0, 7)
+  const dates = weekday != null ? datesFrom(start, weekday, weeks) : []
   const taken = existing ? dates.filter((d) => sessions?.some((s) => s.routineId === existing.id && s.date === d)) : []
   const fresh_dates = dates.filter((d) => !taken.includes(d))
   const sourceOk = source === 'json' ? !!parsed : source === 'existing' ? !!existing : !!name.trim()
@@ -62,7 +65,7 @@ export default function NuevoPrograma() {
       const g = goal.trim()
       const old = goals?.find((x) => x.scope === 'routine' && x.ref === String(id))
       if (g && g !== old?.text) await saveGoal({ ...(old ?? {}), scope: 'routine', ref: String(id), text: g })
-      const r = await saveProgram({ routineId: id, month, weekday, weeks })
+      const r = await saveProgram({ routineId: id, month, weekday, weeks, start })
       toast(`Programa creado: ${r.created} ${r.created === 1 ? 'semana' : 'semanas'}`)
       nav(`/programa/${r.programId}`, { replace: true })
     } finally { setBusy(false) }
@@ -120,12 +123,17 @@ export default function NuevoPrograma() {
       <h2 className="sect">2 · Tipo de rutina</h2>
       <div className="card"><TypePicker value={type} onChange={setType} /></div>
 
-      <h2 className="sect">3 · Día y mes</h2>
+      <h2 className="sect">3 · Día y fecha de inicio</h2>
       <div className="card form">
         <div className="chips" role="group" aria-label="Día de la semana">
           {WD_ORDER.map((n) => <button key={n} className="chipbtn" aria-pressed={weekday === n} aria-label={WEEKDAYS[n]} onClick={() => setWeekday(n)}>{wdShort(n)}</button>)}
         </div>
-        <MonthNav month={month} onChange={setMonth} />
+        <div className="lbl">Empezar a contar desde
+          <div className="row">
+            <DateField className="btn grow" label="Fecha de inicio" value={start} onChange={setStart} />
+            <button type="button" className="btn" disabled={start === todayISO()} onClick={() => setStart(todayISO())}>Hoy</button>
+          </div>
+        </div>
       </div>
 
       <h2 className="sect">4 · Semanas</h2>
@@ -136,7 +144,7 @@ export default function NuevoPrograma() {
           {custom && <Stepper label="Semanas" value={weeks} onChange={setWeeks} min={1} max={12} />}
         </div>
         <p role="status">
-          {weekday == null ? <span className="muted">Elegí el día de la semana para ver las fechas.</span>
+          {weekday == null ? <span className="muted">Elegí el día de la semana para ver las fechas, a partir del inicio que pusiste.</span>
             : fresh_dates.length ? <><strong>Armamos {fresh_dates.length} {fresh_dates.length === 1 ? 'semana' : 'semanas'}:</strong> {listDates(fresh_dates)}.</>
             : <strong>Esas fechas ya están todas programadas para esta rutina.</strong>}
           {taken.length > 0 && <span className="muted"> Ya existen y no se duplican: {taken.map(fmtDay).join(', ')}.</span>}

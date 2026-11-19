@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { deleteGoal, getGoals, getHistory, getLibrary, getRoutineCards, getSessions, loadRoutine, saveGoal, useLive, type Goal, type Session } from './data'
 import { entryFields, entryMetric, fieldUnit, fieldsFor, fmtMetric, metricOf, monthName } from './lib'
-import { Bar, Icon, Sheet } from './ui'
+import { Bar, Icon, Sheet, confirmDialog } from './ui'
 
 /** Todo lo que necesitan Hoy y Progreso, leído en vivo. */
 export function useOverview() {
@@ -99,7 +99,7 @@ export function GoalSheet({ goal, scope, month, o, onClose }: { goal?: Goal; sco
           </>
         )}
         <button className="btn primary block" disabled={!ok}>Guardar</button>
-        {goal && <button type="button" className="btn block" onClick={async () => { await deleteGoal(goal.id); onClose() }}><Icon name="trash" />Quitar objetivo</button>}
+        {goal && <button type="button" className="btn block" onClick={async () => { if (!(await confirmDialog({ title: 'Quitar el objetivo', body: goal.text, ok: 'Quitar' }))) return; await deleteGoal(goal.id); onClose() }}><Icon name="trash" />Quitar objetivo</button>}
       </form>
     </Sheet>
   )

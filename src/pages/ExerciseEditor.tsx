@@ -1,11 +1,42 @@
 import { useState } from 'react'
-import { useLiveQuery } from 'dexie-react-hooks'
-import { BASE_KINDS, addCustomKind, addExercise, db, deleteExercises, getSettings, type Block, type Exercise, type Field, type Target, type TimeUnit } from '../db'
+import {
+  BASE_KINDS, BASE_ROUTINE_TYPES, MUSCLE_GROUPS, addCustomKind, addFromLibrary, addRoutineType, getLibrary, getSettings, norm, saveLibExercise, saveRoutineExercise, useLive,
+  type Block, type Exercise, type Field, type LibExercise, type RoutineTree, type Target, type TimeUnit,
+} from '../data'
 import { FIELD_LABEL, cap, fieldsFor, fmtNum, isFreeKind, parseLink } from '../lib'
-import { Icon, Seg, Sheet, Stepper, confirmDialog } from '../ui'
+import { Chip, Icon, Seg, Sheet, Stepper, toast } from '../ui'
+
+/** Tipo de rutina: Lower, Upper… más los que haya creado el usuario. */
+export function TypePicker({ value, onChange }: { value: string | null; onChange: (t: string) => void }) {
+  const custom = useLive(() => getSettings())?.routineTypes ?? []
+  const [adding, setAdding] = useState(false)
+  const [name, setName] = useState('')
+  const types = [...BASE_ROUTINE_TYPES, ...custom]
+  if (value && !types.some((t) => norm(t) === norm(value))) types.push(value)
+  const add = async () => {
+    const t = await addRoutineType(name)
+    if (!t) return
+    onChange(t); setName(''); setAdding(false)
+  }
+  return (
+    <div>
+      <div className="chips" role="group" aria-label="Tipo de rutina">
+        {types.map((t) => <button key={t} type="button" className="chipbtn" aria-pressed={!!value && norm(value) === norm(t)} onClick={() => onChange(t)}>{t}</button>)}
+        <button type="button" className="chipbtn dashed" onClick={() => setAdding(!adding)}>+ Otro</button>
+      </div>
+      {adding && (
+        <div className="row gap-top">
+          <input className="input grow" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre del tipo" maxLength={20} aria-label="Nombre del tipo de rutina" autoFocus
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void add() } }} />
+          <button type="button" className="btn" onClick={add} disabled={!name.trim()}>Agregar</button>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export function KindPicker({ value, onChange }: { value: string | null; onChange: (k: string) => void }) {
-  const custom = useLiveQuery(() => getSettings())?.customKinds ?? []
+  const custom = useLive(() => getSettings())?.customKinds ?? []
   const [adding, setAdding] = useState(false)
   const [name, setName] = useState('')
   const kinds = [...BASE_KINDS, ...custom]
@@ -81,43 +112,57 @@ export const cleanTarget = (t: Target): Target => {
 
 const ALL_FIELDS: Field[] = ['weight', 'reps', 'duration', 'distance']
 
-export function ExerciseEditor({ dayId, exercise, block, onClose }: { dayId: number; exercise?: Exercise; block?: Block; onClose: () => void }) {
-  const [name, setName] = useState(exercise?.name ?? '')
-  const [kind, setKind] = useState(exercise?.kind ?? 'fuerza')
-  const [timeUnit, setTimeUnit] = useState<TimeUnit>(exercise?.timeUnit ?? 's')
+/**
+ * Editor de ejercicio. Con `routineId` edita la definición (biblioteca) y su uso en la rutina (rondas, objetivo, descanso, nota).
+ * Sin `routineId` edita solo la definición, desde la Biblioteca.
+ */
+export function ExerciseEditor({ routineId, exercise, lib, block, onClose }: { routineId?: number; exercise?: Exercise; lib?: LibExercise; block?: Block; onClose: () => void }) {
+  const base = exercise ?? lib
+  const library = useLive(() => getLibrary())
+  const [name, setName] = useState(base?.name ?? '')
+  const [kind, setKind] = useState(base?.kind ?? 'fuerza')
+  const [muscleGroup, setMuscleGroup] = useState(base?.muscleGroup ?? '')
+  const [timeUnit, setTimeUnit] = useState<TimeUnit>(base?.timeUnit ?? 's')
   const [rounds, setRounds] = useState(exercise?.rounds ?? 3)
   const [target, setTarget] = useState<Target>(exercise?.target ?? { type: 'range', min: 8, max: 12 })
-  const [fields, setFields] = useState<Field[]>(exercise?.fields ?? ['weight', 'reps'])
+  const [fields, setFields] = useState<Field[]>(base?.fields ?? ['weight', 'reps'])
   const [rest, setRest] = useState(block?.restLabel ?? '')
   const [note, setNote] = useState(exercise?.note ?? '')
-  const [link, setLink] = useState(exercise?.linkUrl ?? '')
+  const [link, setLink] = useState(base?.linkUrl ?? '')
+  const [error, setError] = useState('')
+  const inRoutine = routineId != null
   const free = isFreeKind(kind)
   const linkInfo = link.trim() ? parseLink(link) : null
   const linkBad = !!link.trim() && !linkInfo
   const used = fieldsFor({ kind, target, fields })
+  const known = !base && library?.find((l) => l.norm === norm(name))
+  const groups = muscleGroup && !MUSCLE_GROUPS.includes(muscleGroup) ? [...MUSCLE_GROUPS, muscleGroup] : MUSCLE_GROUPS
 
   const save = async () => {
     if (!name.trim() || linkBad) return
-    const draft = { name: name.trim(), kind, timeUnit, rounds, target: cleanTarget(target), note: note.trim(), linkUrl: link.trim(), fields: free ? fields : undefined }
-    if (exercise) {
-      await db.exercises.update(exercise.id, draft)
-      if (block && rest.trim() !== block.restLabel) await db.blocks.update(block.id, { restLabel: rest.trim() })
-    } else await addExercise(dayId, draft, rest.trim())
-    onClose()
-  }
-  const remove = async () => {
-    if (!exercise) return
-    if (!(await confirmDialog({ title: `Borrar "${exercise.name}"`, body: 'También se borran sus registros de todas las sesiones.', ok: 'Borrar' }))) return
-    await deleteExercises(dayId, [exercise.id])
+    const libDraft = { name: name.trim(), kind, muscleGroup, timeUnit, linkUrl: link.trim(), fields: free ? fields : undefined }
+    const r = inRoutine
+      ? await saveRoutineExercise(routineId, libDraft, { rounds, target: cleanTarget(target), note: note.trim() }, rest.trim(), exercise)
+      : await saveLibExercise(libDraft, lib?.id)
+    if (r === 'dup') return setError('Ya hay otro ejercicio con ese nombre en la biblioteca.')
+    if (r === 'in-routine') return setError('Ese ejercicio ya está en esta rutina.')
     onClose()
   }
   return (
-    <Sheet title={exercise ? 'Editar ejercicio' : 'Agregar ejercicio'} onClose={onClose} tall>
+    <Sheet title={base ? 'Editar ejercicio' : 'Nuevo ejercicio'} onClose={onClose} tall>
       <form className="form" onSubmit={(e) => { e.preventDefault(); void save() }}>
         <label className="lbl">Nombre
-          <input className="input" value={name} onChange={(e) => setName(e.target.value)} maxLength={60} autoFocus={!exercise} />
+          <input className="input" value={name} onChange={(e) => { setName(e.target.value); setError('') }} maxLength={60} autoFocus={!base} />
+          {known && inRoutine && <span className="muted small" role="status">Ya está en tu biblioteca: se vincula y comparte su historial.</span>}
         </label>
+        {error && <p role="alert"><strong>Error:</strong> {error}</p>}
         <div className="lbl">Tipo<KindPicker value={kind} onChange={setKind} /></div>
+        <label className="lbl">Grupo muscular
+          <select className="input" value={muscleGroup} onChange={(e) => setMuscleGroup(e.target.value)}>
+            <option value="">Sin grupo</option>
+            {groups.map((g) => <option key={g} value={g}>{g}</option>)}
+          </select>
+        </label>
         {free && (
           <div className="lbl">Campos a cargar
             <div className="chips" role="group" aria-label="Campos a cargar">
@@ -128,9 +173,9 @@ export function ExerciseEditor({ dayId, exercise, block, onClose }: { dayId: num
             </div>
           </div>
         )}
-        <p className="muted small">Se carga: {used.map((f) => FIELD_LABEL[f].toLowerCase()).join(' × ')}</p>
+        {inRoutine && <p className="muted small">Se carga: {used.map((f) => FIELD_LABEL[f].toLowerCase()).join(' × ')}</p>}
         <div className="row">
-          <div className="lbl">Rondas<Stepper label="Rondas" value={rounds} onChange={setRounds} /></div>
+          {inRoutine && <div className="lbl">Rondas<Stepper label="Rondas" value={rounds} onChange={setRounds} /></div>}
           <div className="lbl grow">Unidad de tiempo
             <Seg label="Unidad de tiempo" value={timeUnit}
               onChange={(u) => {
@@ -142,20 +187,49 @@ export function ExerciseEditor({ dayId, exercise, block, onClose }: { dayId: num
               }} options={[{ value: 's', label: 'Seg' }, { value: 'min', label: 'Min' }]} />
           </div>
         </div>
-        <div className="lbl">Objetivo<TargetEditor target={target} timeUnit={timeUnit} onChange={setTarget} /></div>
-        <label className="lbl">{block?.kind === 'superset' ? 'Descanso del bloque (texto)' : 'Descanso (texto)'}
-          <input className="input" value={rest} onChange={(e) => setRest(e.target.value)} placeholder="3'–5', 4', Continue" maxLength={20} />
-        </label>
-        <label className="lbl">Nota
-          <input className="input" value={note} onChange={(e) => setNote(e.target.value)} maxLength={80} />
-        </label>
-        <label className="lbl">Link de técnica
+        {inRoutine && (
+          <>
+            <div className="lbl">Objetivo<TargetEditor target={target} timeUnit={timeUnit} onChange={setTarget} /></div>
+            <label className="lbl">{block?.kind === 'superset' ? 'Descanso de la superserie (texto)' : 'Descanso (texto)'}
+              <input className="input" value={rest} onChange={(e) => setRest(e.target.value)} placeholder="3'–5', 4', Continue" maxLength={20} />
+            </label>
+            <label className="lbl">Nota del ejercicio (vale para todas las semanas)
+              <textarea className="input" rows={2} value={note} onChange={(e) => setNote(e.target.value)} maxLength={400} />
+            </label>
+          </>
+        )}
+        <label className="lbl">Link del video
           <input className="input" type="url" inputMode="url" value={link} onChange={(e) => setLink(e.target.value)} placeholder="YouTube, Instagram o TikTok" aria-invalid={linkBad} />
-          {link.trim() && <span className="muted small" role="status">{linkBad ? 'Error: no es una dirección válida' : linkInfo?.embed ? `Video de ${linkInfo.label}: se ve adentro de la app` : 'Se abre en el sitio (no se puede embeber)'}</span>}
+          {link.trim() && <span className="muted small" role="status">{linkBad ? 'Error: no es una dirección válida' : linkInfo?.embed ? `Video de ${linkInfo.label}: se ve adentro de la app` : 'Se abre en otra app (no se puede embeber)'}</span>}
         </label>
         <button className="btn primary block" disabled={!name.trim() || linkBad}>Guardar</button>
-        {exercise && <button type="button" className="btn block" onClick={remove}><Icon name="trash" />Borrar ejercicio</button>}
       </form>
+    </Sheet>
+  )
+}
+
+/** "+ Ejercicio": elegir uno de la biblioteca o crear uno nuevo. */
+export function AddExerciseSheet({ tree, onClose }: { tree: RoutineTree; onClose: () => void }) {
+  const library = useLive(() => getLibrary())
+  const [q, setQ] = useState('')
+  const [creating, setCreating] = useState(false)
+  if (creating) return <ExerciseEditor routineId={tree.routine.id} onClose={onClose} />
+  const here = new Set(tree.flat.map((f) => f.ex.id))
+  const list = (library ?? []).filter((l) => !here.has(l.id) && l.norm.includes(norm(q)))
+  return (
+    <Sheet title="Agregar ejercicio" onClose={onClose} tall>
+      <button className="btn primary block" onClick={() => setCreating(true)}><Icon name="plus" />Crear ejercicio nuevo</button>
+      <input className="input" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar en la biblioteca" aria-label="Buscar en la biblioteca" />
+      <ul className="plain">
+        {list.map((l) => (
+          <li key={l.id} className="line">
+            <button className="linkrow grow" onClick={async () => { await addFromLibrary(tree.routine.id, l.id); toast(`${l.name} agregado`); onClose() }}>
+              <strong>{l.name}</strong> <Chip>{cap(l.kind)}</Chip>{l.muscleGroup && <span className="muted small"> · {l.muscleGroup}</span>}
+            </button>
+          </li>
+        ))}
+        {library && !list.length && <li className="muted">{q ? 'Nada con ese nombre en la biblioteca.' : 'Todos los ejercicios de tu biblioteca ya están en esta rutina.'}</li>}
+      </ul>
     </Sheet>
   )
 }

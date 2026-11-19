@@ -1,0 +1,130 @@
+<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width"><title>Ozo mobile</title>
+<style>
+body{font:13px system-ui;margin:16px;background:#eee;max-width:1000px}
+h2{margin:24px 0 6px}.row{display:flex;flex-wrap:wrap;gap:16px}
+.ph{width:290px;height:560px;background:#fff;border:3px solid #222;border-radius:22px;display:flex;flex-direction:column;overflow:hidden}
+.ph>.c{flex:1;padding:10px;overflow:hidden}.cap{width:290px;font-size:12px;color:#555;margin-top:-8px}
+.nav{display:flex;border-top:2px solid #222;background:#f5f5f5}.nav span{flex:1;text-align:center;padding:8px 0;font-size:11px}.nav .a{background:#222;color:#fff}
+.btn{display:inline-block;border:2px solid #222;padding:3px 9px;border-radius:4px;background:#ddd;margin:2px}.p{background:#222;color:#fff}
+.card{border:2px solid #222;border-radius:8px;padding:8px;margin:6px 0}.box{border:1px dashed #666;padding:6px;margin:6px 0}
+table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:3px 4px;text-align:left;font-size:12px}
+.b td{background:#222;color:#fff;text-align:center}.g{background:#cfc}.o{background:#fd9}
+.bar{height:8px;background:#ddd;border-radius:4px}.bar i{display:block;height:8px;background:#222;border-radius:4px}
+.wk{display:flex;gap:3px;text-align:center}.wk div{flex:1;border:1px solid #999;border-radius:6px;padding:4px 0}.wk .x{background:#222;color:#fff}.wk .t{border:3px solid #36f}
+.mc{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center}.mc div{padding:5px 0;border-radius:50%;border:1px solid #bbb;font-size:11px}.mc .x{background:#222;color:#fff}.mc .t{border:3px solid #36f}.mc .h{border:0}
+.map{background:#fff;border:2px solid #222;padding:12px;border-radius:6px;line-height:1.9}
+.modal{background:#0005;height:100%;padding:30px 12px}.modal>div{background:#fff;border:3px solid #222;padding:10px}.vid{background:#333;color:#fff;height:130px;display:flex;align-items:center;justify-content:center;margin:6px 0}
+a{color:#06c}small{color:#555}
+</style>
+
+<h2>Navegación</h2>
+<div class=map>
+<b>Barra inferior fija (4 secciones):</b> [ Hoy ] [ Programa ] [ Biblioteca ] [ Progreso ]<br>
+<b>Hoy</b> → <span class="btn p">Empezar</span> → Carga del día (un ejercicio por pantalla) → Terminar → vuelve a Hoy con el día tachado<br>
+<b>Programa</b> → elegís mes arriba (‹ Dic ›) → lista de días (Lun · Lower…) → Grilla del día → Editar rutina / Historial · <span class=btn>+ Nuevo programa</span> abre el asistente (JSON → tipo → día → semanas)<br>
+<b>Biblioteca</b> → ejercicio → ficha (video, mejor marca, gráfico, dónde se usa)<br>
+<b>Progreso</b> → calendario del mes · objetivos del mes · objetivos por rutina · récords<br>
+<b>Video</b> → ▶ en cualquier lado abre pop-up embebido y se cierra con ✕ (vuelvo a donde estaba)
+</div>
+
+<h2>Pantallas mobile</h2>
+<div class=row>
+
+<div><div class=ph><div class=c>
+<b style=font-size:16px>Hola 👋</b><br>Lunes 8 dic<br>
+<div class=wk style=margin:8px 0><div class=x>L<br>●</div><div>M</div><div class=x>X<br>●</div><div>J</div><div class=x>V<br>●</div><div>S</div><div>D</div></div>
+<div class=card style=background:#f0f0f0><small>HOY TOCA</small><br><b style=font-size:16px>Lower A</b><br>5 ejercicios · ~55 min<br><span class="btn p">Empezar →</span></div>
+<div class=card>🎯 <b>Objetivo de diciembre</b><br>16 entrenos + búlgara 24kg<div class=bar style=margin:6px 0><i style=width:19%></i></div><b>3 / 16</b> entrenos · racha 2 sem</div>
+<div class=card>Objetivos por rutina<br>Lower: búlgara 24kg<div class=bar><i style=width:70%></i></div><br>Upper: dominadas x10<div class=bar><i style=width:30%></i></div></div>
+</div><div class=nav><span class=a>Hoy</span><span>Programa</span><span>Biblio</span><span>Progreso</span></div></div>
+<div class=cap>1 · Home. Reemplaza el calendario grande por una tira de la semana + contador del mes. El calendario completo vive en Progreso.</div></div>
+
+<div><div class=ph><div class=c>
+<b style=font-size:16px>Programa</b> <span class=btn style=float:right>+ Nuevo</span><br>
+<div style="text-align:center;margin:8px 0"><span class=btn>‹</span> <b>Diciembre 2026</b> <span class=btn>›</span></div>
+<div class=card><b>Lun · Lower A</b> <span class=btn style=float:right>Lower</span><br><small>4 semanas · 5 ejercicios</small><div class=bar style=margin:5px 0><i style=width:25%></i></div><small>Semana 1 de 4 · 🎯 búlgara 24kg</small></div>
+<div class=card><b>Mar · Upper A</b> <span class=btn style=float:right>Upper</span><br><small>4 semanas · 6 ejercicios</small><div class=bar style=margin:5px 0><i style=width:25%></i></div></div>
+<div class=card><b>Jue · HIT</b> <span class=btn style=float:right>HIT</span><br><small>4 semanas · 4 ejercicios</small><div class=bar style=margin:5px 0><i style=width:0></i></div></div>
+<div class=card><b>Vie · Full body</b><br><small>4 semanas · 5 ejercicios</small></div>
+</div><div class=nav><span>Hoy</span><span class=a>Programa</span><span>Biblio</span><span>Progreso</span></div></div>
+<div class=cap>2 · Programa. Sin fichero: mes con flechas y una tarjeta por día. Tocás una y entrás a su grilla.</div></div>
+
+<div><div class=ph><div class=c>
+<span class=btn>‹</span> <b>Lun · Lower A</b> <span class=btn style=float:right>⋯</span><br><small>🎯 Búlgara 24kg x 8</small>
+<div style="text-align:center;margin:6px 0"><span class=btn>‹</span> <b>Semana 2 de 4</b> · 8 dic <span class=btn>›</span></div>
+<table><tr><th>Ronda<th>Obj<th>Sem 1<th>Sem 2 (hoy)</tr>
+<tr class=b><td colspan=4 style=text-align:left>Búlgara mancuernas <a href=# style=color:#9cf>▶</a> · Rest 3-5'</tr>
+<tr><td>R1<td>6-10<td>20x8<td class=g><b>22x8</b></tr>
+<tr><td>R2<td>6-10<td>20x7<td class=g><b>22x7</b></tr>
+<tr><td>R3<td>6-10<td>20x6<td class=o><b>20x6</b></tr>
+<tr class=b><td colspan=4 style=text-align:left>Peso muerto rumano <a href=# style=color:#9cf>▶</a> · Rest 4'</tr>
+<tr><td>R1<td>8-12<td>60x10<td><b>[ cargar ]</b></tr>
+<tr><td>R2<td>8-12<td>60x9<td><b>[ cargar ]</b></tr></table>
+<small>Solo semana anterior y actual. Con ‹ › cambiás de semana. El nombre del ejercicio siempre queda visible. Tocás una celda para cargar. Para ver las 4 semanas juntas: <u>Ver grilla completa</u> (o en compu).</small><br>
+<span class=btn>Editar rutina</span><span class=btn>Historial</span>
+</div><div class=nav><span>Hoy</span><span class=a>Programa</span><span>Biblio</span><span>Progreso</span></div></div>
+<div class=cap>3 · Grilla del día (celu). Solo semana anterior y actual, sin scroll horizontal. La grilla completa de 4+ semanas queda en desktop.</div></div>
+
+<div><div class=ph><div class=c>
+<small>Lower A · Ejercicio 1 de 5</small>
+<div class=bar><i style=width:20%></i></div>
+<h3 style=margin:8px 0 2px>Búlgara mancuernas</h3><a href=#>▶ Ver video</a> · <small>Obj 6-10 · Rest 3-5'</small><br><small>Sem pasada: 20×8 · 20×7 · 20×6</small>
+<div class=card>R1 &nbsp; <span class=btn>22 kg</span> × <span class=btn>8</span> ✔</div>
+<div class=card>R2 &nbsp; <span class=btn>22 kg</span> × <span class=btn>7</span> ✔</div>
+<div class=card style=background:#f0f0f0>R3 &nbsp; <span class=btn>22 kg</span> × <span class=btn>__</span> ☐</div>
+<div class=box style=text-align:center>⏱ Descanso <b style=font-size:20px>3:42</b> <span class=btn>Saltar</span></div>
+<small>🏆 R1: récord personal (22×8)</small><br><br>
+<span class=btn>← Ant</span><span class="btn p">Siguiente →</span>
+</div><div class=nav><span>Hoy</span><span class=a>Programa</span><span>Biblio</span><span>Progreso</span></div></div>
+<div class=cap>4 · Carga del día. Un ejercicio por pantalla. Al terminar el último: "Terminar entreno" tacha el día.</div></div>
+
+<div><div class=ph><div class=modal><div>
+<b>Búlgara mancuernas</b> <span class=btn style=float:right>✕</span>
+<div class=vid>▶ YouTube / Instagram embebido</div>
+<small>Si el video no se puede embeber: "Abrir en otra app".</small></div></div></div>
+<div class=cap>5 · Video. Pop-up sobre la pantalla actual. Lo cerrás y seguís cargando.</div></div>
+
+<div><div class=ph><div class=c>
+<b style=font-size:16px>Progreso</b><br>
+<div style="text-align:center;margin:6px 0"><span class=btn>‹</span> <b>Diciembre</b> <span class=btn>›</span></div>
+<div class=mc><div class=h>L</div><div class=h>M</div><div class=h>X</div><div class=h>J</div><div class=h>V</div><div class=h>S</div><div class=h>D</div>
+<div class=x>1</div><div>2</div><div class=x>3</div><div>4</div><div class=x>5</div><div>6</div><div>7</div><div class=t>8</div><div>9</div><div>10</div><div>11</div><div>12</div><div>13</div><div>14</div></div>
+<small>● entrenaste · azul = hoy. Tocás un día para ver qué hiciste.</small>
+<div class=card style=margin-top:8px><b>3 entrenos</b> este mes · meta 16<div class=bar style=margin:5px 0><i style=width:19%></i></div>Racha: 2 semanas</div>
+<div class=card>🎯 <b>Objetivo del mes</b> <span class=btn style=float:right>Editar</span><br>Búlgara 24kg + 16 entrenos</div>
+<div class=card>🏆 Récords: Búlgara 24×8 · Tibial 25</div>
+</div><div class=nav><span>Hoy</span><span>Programa</span><span>Biblio</span><span class=a>Progreso</span></div></div>
+<div class=cap>6 · Progreso. Calendario compacto con círculos (solo informa), contador, objetivo del mes y récords.</div></div>
+
+</div>
+<h2>Editar filas, columnas y notas (celu)</h2>
+<div class=row>
+
+<div><div class=ph><div class=c style="background:#0003;padding:0;position:relative">
+<div style="padding:10px;opacity:.5"><div class=wk style=margin:0><div>Búlgara</div></div><table><tr class=b><td style=text-align:left>Búlgara mancuernas ⋯</tr><tr><td>R1 6-10 20x8 22x8</tr></table></div>
+<div style="position:absolute;bottom:0;left:0;right:0;background:#fff;border-top:3px solid #222;padding:10px;border-radius:14px 14px 0 0">
+<b>Búlgara mancuernas</b> <small>(tocás la barra negra)</small>
+<div class=card style=margin:4px 0>✏️ Editar ejercicio (objetivo, descanso, video)</div>
+<div class=card style=margin:4px 0>＋ Agregar ronda (R4)</div>
+<div class=card style=margin:4px 0>📝 Nota del ejercicio</div>
+<div class=card style=margin:4px 0>↕ Mover · 🔗 Agrupar en superserie</div>
+<div class=card style="margin:4px 0;border-color:#c00;color:#c00">🗑 Quitar ejercicio</div>
+</div></div></div>
+<div class=cap>7 · Fila. Tocás la barra negra del ejercicio y se abre este menú abajo. Tocar una ronda (R3) permite editarla o quitarla. Quitar siempre tiene "Deshacer" por 5 segundos.</div></div>
+
+<div><div class=ph><div class=c>
+<span class=btn>‹</span> <b>Lun · Lower A</b><br>
+<div style="text-align:center;margin:6px 0"><span class=btn>‹</span> <b>Semana 2 de 4</b> <span class=btn>›</span> <span class=btn>⋯</span></div>
+<div class=card style="margin:2px 0 6px;background:#f5f5f5"><small>Menú ⋯ de semana:</small><br>＋ Agregar semana 5 · 🗑 Quitar semana 2 · 📋 Copiar valores de la semana anterior</div>
+<table><tr><th>Ronda<th>Obj<th>Sem 1<th>Sem 2</tr>
+<tr class=b><td colspan=4 style=text-align:left>Búlgara mancuernas ⋯ 📝</tr>
+<tr><td>R1<td>6-10<td>20x8<td class=g><b>22x8</b> 📝</tr>
+<tr><td>R2<td>6-10<td>20x7<td class=g><b>22x7</b></tr>
+<tr><td colspan=4 style=text-align:center><span class=btn>＋ Ronda</span></tr></table>
+<div class=box>📝 <b>Nota del ejercicio:</b> "Pie trasero en banco más alto, bajar lento 3 seg"</div>
+<div class=box>📝 <b>Nota sem 2 · R1:</b> "Me sentí fuerte, subir a 24 la próxima"</div>
+<span class=btn>＋ Ejercicio</span><span class=btn>📝 Nota del entreno</span>
+</div><div class=nav><span>Hoy</span><span class=a>Programa</span><span>Biblio</span><span>Progreso</span></div></div>
+<div class=cap>8 · Columnas y notas. El ⋯ junto a la semana agrega o quita columnas. 📝 en un ejercicio, en una celda o en el entreno entero; cualquier texto libre.</div></div>
+
+</div>

@@ -1,0 +1,113 @@
+<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width"><title>Ozo wireframes v3</title>
+<style>
+body{font:14px system-ui;margin:16px;background:#eee;max-width:900px}
+h2{margin:28px 0 4px}p.n{margin:0 0 8px;color:#555}
+.s{background:#fff;border:2px solid #222;padding:12px;border-radius:6px}
+.m{max-width:340px}
+table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:4px 6px;text-align:left}
+.b td{background:#222;color:#fff;text-align:center;font-weight:700}
+.btn{display:inline-block;border:2px solid #222;padding:3px 10px;border-radius:4px;margin:2px;background:#ddd}
+.p{background:#222;color:#fff}.box{border:1px dashed #666;padding:8px;margin:6px 0}
+.g{background:#cfc}.o{background:#fd9}
+.cal td{text-align:center;width:14%;height:34px}.x{background:#222;color:#fff}.t{outline:3px solid #36f}
+.tab{display:inline-block;padding:4px 12px;border:2px solid #222;border-bottom:0;border-radius:6px 6px 0 0;background:#ddd}
+.tab.a{background:#222;color:#fff}.line{border-top:2px solid #222;margin-bottom:8px}
+.modal{background:#fff;border:3px solid #222;padding:10px;box-shadow:6px 6px 0 #0004}
+.vid{background:#333;color:#fff;height:120px;display:flex;align-items:center;justify-content:center;margin:6px 0}
+a{color:#06c}
+</style>
+
+<h2>0 · Home</h2><p class=n>Lo primero que ves: objetivo del mes, calendario con días tachados, contador y qué toca hoy.</p>
+<div class=s>
+<b>Hoy: lunes 8 dic</b> · Toca <b>Lower</b> <span class="btn p">Empezar →</span><br><br>
+<div class=box><b>🎯 Objetivo de diciembre</b><br>"Hacer 16 entrenamientos y subir la búlgara a 24kg"<br>
+Entrenos: <b>3 / 16</b> ▓▓░░░░░░░░ <span class=btn>Editar</span></div>
+<table class=cal><caption><b>Diciembre</b></caption>
+<tr><th>L<th>M<th>X<th>J<th>V<th>S<th>D</tr>
+<tr><td class=x>1<td>2<td class=x>3<td>4<td class=x>5<td>6<td>7</tr>
+<tr><td class="t">8<td>9<td>10<td>11<td>12<td>13<td>14</tr></table>
+<small>■ entrenaste · □ azul = hoy · sin tachar = programado pendiente</small><br>
+<b>Contador: 3 entrenos este mes · racha 2 semanas</b><br><br>
+<b>Objetivos por rutina:</b> Lower: búlgara 24kg ▓▓▓░ · Upper: dominadas x10 ▓░░░
+</div>
+
+<h2>1 · Crear programa (Cargar rutina)</h2><p class=n>Paso 1 ahora te pregunta el tipo, así queda clasificada.</p>
+<div class=s>
+<b>Paso 1: Cargar rutina</b><div class=box>Pegá el JSON o <span class=btn>Subir archivo</span> · <span class=btn>Copiar prompt para Claude</span></div>
+✔ Leí: "Lower A" · 5 ejercicios · 15 series<br><br>
+<b>¿Qué tipo de rutina es?</b><br>
+<span class="btn p">Lower</span><span class=btn>Upper</span><span class=btn>Full body</span><span class=btn>HIT</span><span class=btn>Push</span><span class=btn>Pull</span><span class=btn>Cardio</span><span class=btn>+ Otro</span><br>
+<small>Ejercicios nuevos para tu biblioteca: 4</small><br><br>
+<b>Paso 2: ¿Qué día?</b> <span class="btn p">Lun</span><span class=btn>Mar</span><span class=btn>Mié</span>… · <b>Mes:</b> <span class=btn>Diciembre 2026</span><br>
+<b>Paso 3: ¿Cuántas semanas?</b> <span class=btn>2</span><span class="btn p">4</span><span class=btn>6</span><span class=btn>Otro</span><br>
+<b>Objetivo de esta rutina (opcional):</b> <span class=btn>Búlgara 24kg x 8</span><span class=btn>+ agregar</span><br><br>
+<span class="btn p">Crear programa</span>
+</div>
+
+<h2>2 · Programa del mes (fichero con solapas)</h2><p class=n>Primera fila: mes. Segunda fila: días de la semana con rutina. Tocar un día abre su grilla.</p>
+<div class=s>
+<span class=tab>Noviembre</span><span class="tab a">Diciembre</span><span class=tab>Enero</span><span class=btn>+ Mes</span><br><div class=line></div>
+<span class="tab a">Lun · Lower</span><span class=tab>Mar · Upper</span><span class=tab>Jue · HIT</span><span class=tab>Vie · Full</span><span class=btn>+ Día</span><br><div class=line></div>
+<b>Lower A · Lunes · Diciembre</b> <span class=btn>Editar rutina</span><span class=btn>Historial</span><br>
+🎯 Objetivo: Búlgara 24kg x 8 ▓▓▓░<br><br>
+<table>
+<tr><th>Ejercicio<th>Ronda<th>Objetivo<th>Sem 1<br><small>1 dic</small><th>Sem 2<br><small>8 dic</small><th>Sem 3<th>Sem 4<th><span class=btn>+ sem</span></tr>
+<tr class=b><td colspan=8>Rest 3'-5'</tr>
+<tr><td rowspan=3><b>Búlgara mancuernas</b><br><a href=#>▶ Ver video</a><br><small>Mejor: 24kg x 8</small><td>R1<td>6-10<td>20x8<td class=g>22x8<td>·<td>·<td></tr>
+<tr><td>R2<td>6-10<td>20x7<td class=g>22x7<td>·<td>·<td></tr>
+<tr><td>R3<td>6-10<td>20x6<td class=o>20x6<td>·<td>·<td></tr>
+<tr class=b><td colspan=8>Rest 4'</tr>
+<tr><td rowspan=2><b>Peso muerto rumano</b> <span class=btn>▶</span><td>R1<td>8-12<td>60x10<td>·<td>·<td>·<td>
+<tr><td>R2<td>8-12<td>60x9<td>·<td>·<td>·<td></tr></table>
+<small>▶ solo aparece si el ejercicio tiene video. Verde = mejora · Naranja = igual o menos.</small>
+</div>
+
+<h2>3 · Video embebido (pop-up dentro de la app)</h2><p class=n>Al tocar "▶ Ver video" se abre acá encima. YouTube e Instagram se muestran embebidos, sin salir de la app.</p>
+<div class="s" style="background:#0002">
+<div class=modal style="max-width:420px;margin:auto"><b>Búlgara mancuernas</b> <span class=btn style=float:right>✕</span>
+<div class=vid>▶ video YouTube / Instagram embebido</div>
+<small>Link: youtube.com/watch?v=… · <a href=#>Editar link</a></small></div>
+</div>
+
+<h2>4 · Editor de rutina (agrupar)</h2><p class=n>Ver toda la rutina y agrupar arrastrando o tildando. Grupos persisten en todas las semanas.</p>
+<div class=s>
+<b>Lower A</b> · tipo: <span class=btn>Lower ▾</span> · <span class=btn>+ Ejercicio de biblioteca</span><span class=btn>+ Nuevo</span><br><br>
+<div class=box>☰ <b>Búlgara mancuernas</b> ▶ · 3 × 6-10 · Rest 3-5'</div>
+<div class=box>☰ <b>Peso muerto rumano</b> ▶ · 3 × 8-12 · Rest 4'</div>
+<div class=box style="border:2px solid #222"><b>GRUPO: Superserie A</b> <small>(alternan A1, B1, A2, B2…)</small><br>☰ Tibial raises · 3 × 15<br>☰ Crunch abdominal · 3 × 20<br><small>Descanso entre vueltas: 60"</small> <span class=btn>Desagrupar</span></div><br>
+Con 2+ tildados: <span class=btn>☑ Agrupar</span><span class=btn>Duplicar</span><span class=btn>Quitar</span>
+</div>
+
+<h2>5 · Carga del día (celu, en el gym)</h2><p class=n>Un ejercicio por pantalla. Link al video bajo el nombre (se abre como pop-up). Al terminar el día, se tacha en el calendario.</p>
+<div class="s m">
+<b>Lun 8 dic · Lower</b> · Ejercicio 1 de 5<br><br>
+<h3 style=margin:4px>Búlgara mancuernas</h3>
+<a href=#>▶ Ver video</a><br><small>Semana pasada: 20×8 · 20×7 · 20×6</small>
+<table><tr><th>Serie<th>Peso<th>Reps<th></tr>
+<tr><td>R1<td>[ 22 ]<td>[ 8 ]<td>✔<tr><td>R2<td>[ 22 ]<td>[ 7 ]<td>✔<tr><td>R3<td>[ 22 ]<td>[ __ ]<td>☐</table><br>
+<div class=box style="text-align:center">⏱ Descanso <b>3:42</b> <span class=btn>Saltar</span></div>
+<span class=btn>← Anterior</span><span class="btn p">Siguiente →</span><br><small>🏆 R1: nuevo récord (22×8)</small><br><br>
+<span class="btn p">Terminar entreno ✔ (tacha hoy)</span>
+</div>
+
+<h2>6 · Biblioteca y progreso</h2>
+<div class=s>
+<table><tr><th>Ejercicio<th>Tipo<th>Grupo<th>Video<th>Mejor<th>Usado en</tr>
+<tr><td>Búlgara mancuernas<td>peso×reps<td>Piernas<td>▶ YouTube<td>24×8<td>Lower</tr>
+<tr><td>Tibial raises<td>reps<td>Piernas<td>—<td>25<td>Lower, Full</tr>
+<tr><td>Suitcase carry<td>peso×tiempo<td>Core<td>▶ Instagram<td>30kg×40"<td>Lower</tr></table><br>
+<b>Búlgara · progreso</b>: gráfico de línea del peso máximo por semana: 20 → 22 → 22 → 24
+</div>
+
+<h2>7 · Editar filas, columnas y notas (desktop)</h2><p class=n>Las acciones aparecen al pasar el mouse. No hace falta un "modo edición".</p>
+<div class=s>
+<table>
+<tr><th>Ejercicio<th>Ronda<th>Objetivo<th>Sem 1 <span class=btn>🗑</span><th>Sem 2 <span class=btn>🗑</span><th>Sem 3 <span class=btn>🗑</span><th><span class=btn>＋ sem</span></tr>
+<tr class=b><td colspan=7>Rest 3'-5' (clic para editar)</tr>
+<tr><td rowspan=3><b>Búlgara mancuernas</b> ▶ 📝<br><small>hover: ✏️ editar · ↕ mover · 🔗 agrupar · 🗑 quitar</small><td>R1 <small>🗑</small><td>6-10<td>20x8<td class=g>22x8 📝<td>·<td></tr>
+<tr><td>R2 <small>🗑</small><td>6-10<td>20x7<td class=g>22x7<td>·<td></tr>
+<tr><td><span class=btn>＋ ronda</span><td><td><td><td><td></tr>
+<tr><td colspan=7 style=text-align:center><span class=btn>＋ Agregar ejercicio (biblioteca o nuevo)</span></tr></table><br>
+<div class=box>📝 Nota del ejercicio: "Pie trasero en banco más alto, bajar lento 3 seg"<br>📝 Nota sem 2 · R1: "Me sentí fuerte, subir a 24"<br>📝 Nota del entreno: <i>texto libre…</i></div>
+<small>Quitar fila o columna pide confirmar solo si tiene datos cargados, y siempre ofrece "Deshacer".</small>
+</div>

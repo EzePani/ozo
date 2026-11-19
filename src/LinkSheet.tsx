@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { parseLink } from './lib'
 import { Sheet } from './ui'
 
-/** Muestra el link de técnica embebido, sin salir de la app. */
+/** Video embebido como pop-up sobre la pantalla actual: se cierra y se sigue donde se estaba. */
 export function LinkSheet({ url, title, onClose }: { url: string; title: string; onClose: () => void }) {
   const info = parseLink(url)
   const [loaded, setLoaded] = useState(false)
@@ -32,7 +32,7 @@ export function LinkSheet({ url, title, onClose }: { url: string; title: string;
             : 'El video está tardando en cargar.'}
         </p>
       )}
-      {info && <a className="btn block" href={url} target="_blank" rel="noopener noreferrer">Abrir en el sitio</a>}
+      {info && <a className="btn block" href={url} target="_blank" rel="noopener noreferrer">Abrir en otra app</a>}
     </Sheet>
   )
 }

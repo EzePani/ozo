@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import type { Field, TimeUnit } from './db'
-import { FIELD_LABEL, fieldUnit, fmtDate, type Draft } from './lib'
+import { Link } from 'react-router-dom'
+import type { Field, TimeUnit, Undo } from './data'
+import { FIELD_LABEL, fieldUnit, fmtDate, monthLabel, shiftMonth, type Draft } from './lib'
 
 // ---------- íconos (trazo simple) ----------
 const PATHS: Record<string, string> = {
@@ -29,6 +30,11 @@ const PATHS: Record<string, string> = {
   later: 'M12 4v12M7 11l5 5 5-5M5 20h14',
   download: 'M12 4v11M7 10l5 5 5-5M5 20h14',
   upload: 'M12 16V5M7 10l5-5 5 5M5 20h14',
+  book: 'M5 4h13v16H5zM9 4v16M12 9h3',
+  up: 'M12 19V5M6 11l6-6 6 6',
+  down: 'M12 5v14M6 13l6 6 6-6',
+  note: 'M5 4h14v12l-5 4H5zM14 20v-4h5M8 9h8M8 13h4',
+  target: 'M12 3a9 9 0 100 18 9 9 0 000-18zM12 8a4 4 0 100 8 4 4 0 000-8zM12 12h.01',
 }
 export function Icon({ name, size = 24 }: { name: string; size?: number }) {
   return (
@@ -86,17 +92,79 @@ export function ConfirmHost() {
   )
 }
 
-// ---------- aviso breve ----------
-let push: (msg: string) => void = () => {}
-export const toast = (msg: string) => push(msg)
+// ---------- aviso breve (con acción opcional, ej. Deshacer) ----------
+interface ToastAction { label: string; run: () => void | Promise<void> }
+let push: (msg: string, action?: ToastAction) => void = () => {}
+export const toast = (msg: string, action?: ToastAction) => push(msg, action)
+/** Avisa un borrado y ofrece deshacerlo durante unos segundos. */
+export const toastUndo = (msg: string, undo: Undo) => push(msg, { label: 'Deshacer', run: async () => { await undo(); push('Listo, volvió como estaba') } })
 export function ToastHost() {
-  const [msg, setMsg] = useState('')
+  const [st, setSt] = useState<{ msg: string; action?: ToastAction } | null>(null)
   useEffect(() => {
     let t = 0
-    push = (m) => { setMsg(m); clearTimeout(t); t = window.setTimeout(() => setMsg(''), 2600) }
+    push = (msg, action) => { setSt({ msg, action }); clearTimeout(t); t = window.setTimeout(() => setSt(null), action ? 7000 : 2600) }
     return () => clearTimeout(t)
   }, [])
-  return <div className="toast" role="status" aria-live="polite">{msg && <span>{msg}</span>}</div>
+  return (
+    <div className="toast" role="status" aria-live="polite">
+      {st && <span>{st.msg}{st.action && <button onClick={() => { const a = st.action!; setSt(null); void a.run() }}>{st.action.label}</button>}</span>}
+    </div>
+  )
+}
+
+/** true en pantallas anchas (compu): cambia la grilla y la navegación. */
+export function useIsDesktop() {
+  const q = '(min-width: 900px)'
+  const [v, set] = useState(() => matchMedia(q).matches)
+  useEffect(() => {
+    const m = matchMedia(q)
+    const f = () => set(m.matches)
+    m.addEventListener('change', f)
+    return () => m.removeEventListener('change', f)
+  }, [])
+  return v
+}
+
+// ---------- piezas de página ----------
+export function PageHead({ title, back, children }: { title: ReactNode; back?: string; children?: ReactNode }) {
+  return (
+    <header className="pagehead">
+      {back && <Link to={back} className="iconbtn" aria-label="Volver"><Icon name="back" /></Link>}
+      <h1>{title}</h1>
+      {children}
+      {!back && <Link to="/ajustes" className="iconbtn onlymobile" aria-label="Ajustes"><Icon name="sliders" /></Link>}
+    </header>
+  )
+}
+
+export function MonthNav({ month, onChange }: { month: string; onChange: (m: string) => void }) {
+  return (
+    <div className="monthnav">
+      <button className="iconbtn" aria-label="Mes anterior" onClick={() => onChange(shiftMonth(month, -1))}><Icon name="back" /></button>
+      <strong aria-live="polite">{monthLabel(month)}</strong>
+      <button className="iconbtn" aria-label="Mes siguiente" onClick={() => onChange(shiftMonth(month, 1))}><Icon name="next" /></button>
+    </div>
+  )
+}
+
+/** Barra de avance. Siempre va acompañada de su texto ("3 / 16"). */
+export function Bar({ value, max, label }: { value: number; max: number; label: string }) {
+  const pct = max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0
+  return <div className="bar" role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={Math.min(value, max)}><i style={{ width: `${pct}%` }} /></div>
+}
+
+export function NoteSheet({ title, value, hint, onSave, onClose }: { title: string; value: string; hint?: string; onSave: (text: string) => void | Promise<unknown>; onClose: () => void }) {
+  const [text, setText] = useState(value)
+  return (
+    <Sheet title={title} onClose={onClose}>
+      {hint && <p className="muted small">{hint}</p>}
+      <textarea className="input" rows={4} value={text} onChange={(e) => setText(e.target.value)} maxLength={400} autoFocus aria-label={title} placeholder="Texto libre" />
+      <div className="row">
+        {value && <button className="btn" onClick={async () => { await onSave(''); onClose() }}>Borrar nota</button>}
+        <button className="btn primary grow" onClick={async () => { await onSave(text.trim()); onClose() }}>Guardar</button>
+      </div>
+    </Sheet>
+  )
 }
 
 // ---------- controles ----------

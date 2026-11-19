@@ -1,8 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Icon, Seg, Sheet } from './ui'
 
-interface Ctx { open: () => void; badge: string | null }
-const StopwatchCtx = createContext<Ctx>({ open: () => {}, badge: null })
+interface Ctx { open: () => void; badge: string | null; /** abre la cuenta regresiva con ese tiempo cargado, sin iniciarla */ countdown: (ms: number) => void }
+const StopwatchCtx = createContext<Ctx>({ open: () => {}, badge: null, countdown: () => {} })
 export const useStopwatch = () => useContext(StopwatchCtx)
 
 const mmss = (ms: number, ceil = false) => {
@@ -90,7 +90,10 @@ export function StopwatchProvider({ children }: { children: ReactNode }) {
   })
 
   const badge = cd.end != null ? mmss(cdMs, true) : sw.start != null ? mmss(swMs) : null
-  const ctx = useMemo(() => ({ open: () => setShown(true), badge }), [badge])
+  const ctx = useMemo(() => ({
+    open: () => setShown(true), badge,
+    countdown: (ms: number) => { setMode('cd'); setCd((c) => (c.end != null ? c : { end: null, left: ms, total: ms, done: false })); setShown(true) },
+  }), [badge])
 
   return (
     <StopwatchCtx.Provider value={ctx}>

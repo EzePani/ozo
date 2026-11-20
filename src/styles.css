@@ -582,3 +582,22 @@ code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .8125re
 .iconbtn.addweek { border: 1.5px dashed var(--ctl); border-radius: 50%; width: 40px; height: 40px; margin: 4px 4px; color: var(--muted); }
 .addweekbtn { flex: none; display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 12px 0 10px; margin: 0 4px; border: 1.5px dashed var(--ctl); border-radius: 999px; background: none; color: var(--text); font-size: .875rem; font-weight: 700; }
 .addweekbtn:active { background: var(--card); }
+
+/* Nombre del ejercicio: las acciones no se encimen con el texto */
+.gname .pl-name { padding-right: 84px; }
+.gtools { top: 8px; right: 8px; gap: 4px; align-items: center; }
+.gtools .ghost { width: 36px; height: 36px; min-height: 0; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; }
+.gname .pl-name .minibtn { vertical-align: middle; margin-left: 4px; }
+
+/* Acciones del ejercicio: columna fija a la derecha (video · nota · ⋯) */
+.gname .pl-name { padding-right: 0; }
+.gname-in { display: flex; align-items: flex-start; gap: 6px; }
+.gname-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.xacts { display: flex; flex: none; gap: 2px; align-items: center; }
+.gname .xacts .ghost { width: 36px; height: 36px; min-height: 0; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; }
+.exbar-in { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; }
+.exbar-in .exbar-main { grid-column: 1; grid-row: 1; }
+.exbar-in .xacts { grid-column: 2; grid-row: 1; padding-right: 4px; }
+.exbar-in .exrest { grid-column: 1 / -1; grid-row: 2; justify-self: start; margin: 0 0 8px 12px; }
+.exbar-in .xacts .iconbtn { width: 44px; height: 44px; }
+.exbar-name { overflow-wrap: anywhere; }

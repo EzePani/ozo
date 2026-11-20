@@ -266,11 +266,14 @@ export default function Grilla() {
                               {pos !== 'single' && <span className="pl-block">SUPERSERIE · alterna</span>}
                               <span className="exbar-name">{ex.name}</span>
                             </button>
+                            <div className="xacts">
+                              {ex.linkUrl && <button className="iconbtn" aria-label={`Ver video de ${ex.name}`} onClick={() => setLink(ex)}><Icon name="play" /></button>}
+                              {ex.note && <button className="iconbtn" aria-label={`Nota de ${ex.name}: ${ex.note}`} title={ex.note} onClick={() => setNote({ row })}><Icon name="note" /></button>}
+                              <button className="iconbtn" aria-label={`Acciones de ${ex.name}`} onClick={() => setExMenu(ex.itemId)}><Icon name="more" /></button>
+                            </div>
                             {(pos === 'single' || pos === 'first') && !block.noRest && (
-                              <button className="pill rest" onClick={() => setRestEdit(block)} aria-label={`Descanso: ${block.restLabel || 'sin definir'}. Editar`}>{block.restLabel ? `Rest ${block.restLabel}` : '+ Rest'}</button>
+                              <button className="pill rest exrest" onClick={() => setRestEdit(block)} aria-label={`Descanso: ${block.restLabel || 'sin definir'}. Editar`}>{block.restLabel ? `Rest ${block.restLabel}` : '+ Rest'}</button>
                             )}
-                            {ex.note && <button className="iconbtn" aria-label={`Nota de ${ex.name}: ${ex.note}`} title={ex.note} onClick={() => setNote({ row })}><Icon name="note" /></button>}
-                            {ex.linkUrl && <button className="iconbtn" aria-label={`Ver video de ${ex.name}`} onClick={() => setLink(ex)}><Icon name="play" /></button>}
                           </div>
                         </td>
                       </tr>
@@ -341,12 +344,17 @@ export default function Grilla() {
                         <tr key={r}>
                           {r === 1 && (
                             <th scope="rowgroup" rowSpan={ex.rounds} className="sticky gname" onContextMenu={(e) => { e.preventDefault(); setExMenu(ex.itemId) }}>
-                              <span className="gtools hov">
-                                <button className="ghost" aria-label={`Acciones de ${ex.name}`} title="Más acciones" onClick={() => setExMenu(ex.itemId)}><Icon name="more" size={20} /></button>
-                                <button className="ghost danger" aria-label={`Quitar el ejercicio ${ex.name}`} title="Quitar el ejercicio y sus rondas" onClick={() => removeEx(row)}><Icon name="trash" size={18} /></button>
-                              </span>
-                              <span className="pl-name">{ex.name} {ex.linkUrl && <button className="minibtn" aria-label={`Ver video de ${ex.name}`} title="Ver video" onClick={() => setLink(ex)}><Icon name="play" size={18} /></button>}{ex.note && <button className="minibtn" aria-label={`Nota de ${ex.name}: ${ex.note}`} title={ex.note} onClick={() => setNote({ row })}><Icon name="note" size={18} /></button>}</span>
-                              {best && <span className="muted small num">Mejor: {fmtEntry(best, fields, true)}</span>}
+                              <div className="gname-in">
+                                <div className="gname-txt">
+                                  <span className="pl-name">{ex.name}</span>
+                                  {best && <span className="muted small num">Mejor: {fmtEntry(best, fields, true)}</span>}
+                                </div>
+                                <div className="xacts">
+                                  {ex.linkUrl && <button className="ghost" aria-label={`Ver video de ${ex.name}`} title="Ver video" onClick={() => setLink(ex)}><Icon name="play" size={18} /></button>}
+                                  {ex.note && <button className="ghost" aria-label={`Nota de ${ex.name}: ${ex.note}`} title={ex.note} onClick={() => setNote({ row })}><Icon name="note" size={18} /></button>}
+                                  <button className="ghost" aria-label={`Acciones de ${ex.name}`} title="Más acciones" onClick={() => setExMenu(ex.itemId)}><Icon name="more" size={20} /></button>
+                                </div>
+                              </div>
                             </th>
                           )}
                           <td className={'rnd' + (picked ? ' pickable' : '')} onClick={() => picked && addRefs(rowRefs(ex, r))} onContextMenu={(e) => { e.preventDefault(); setRoundMenu({ itemId: ex.itemId, round: r }) }}>

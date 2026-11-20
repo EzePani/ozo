@@ -601,3 +601,10 @@ code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .8125re
 .exbar-in .exrest { grid-column: 1 / -1; grid-row: 2; justify-self: start; margin: 0 0 8px 12px; }
 .exbar-in .xacts .iconbtn { width: 44px; height: 44px; }
 .exbar-name { overflow-wrap: anywhere; }
+
+/* Duración de entrenos (Progreso) */
+.durrow { display: grid; gap: 8px; }
+.durbars { display: flex; align-items: flex-end; gap: 6px; height: 110px; }
+.durbar { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 2px; text-align: center; }
+.durbar i { display: block; width: 100%; max-width: 36px; background: var(--today); border-radius: 6px 6px 2px 2px; min-height: 12px; }
+.durbar small { font-size: .625rem; line-height: 1.1; white-space: nowrap; }

@@ -25,7 +25,9 @@ export interface LibExercise {
 export interface RoutineItem { id: number; blockId: number; order: number; exerciseId: number; rounds: number; target: Target; note: string }
 /** Una rutina puesta en un mes: crea una columna (sesión) por semana. */
 export interface Program { id: number; routineId: number; month: string; weekday: number; weeks: number }
-export interface Session { id: number; routineId: number; programId: number; date: string; status: 'planned' | 'done'; order: number; note?: string }
+export interface Session { id: number; routineId: number; programId: number; date: string; status: 'planned' | 'done'; order: number; note?: string
+  /** Hora (ms) en que se apretó "Empezar" y en que se terminó el entreno; sirven para medir cuánto duró. */
+  startedAt?: number; endedAt?: number }
 export interface Entry {
   sessionId: number; exerciseId: number; round: number
   weight?: number; reps?: number; durationSec?: number; distance?: number; done: boolean; note?: string

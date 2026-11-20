@@ -1,7 +1,7 @@
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { finishSession, loadSession, saveEntry, updateSession, useLive, type Block, type Entry, type Exercise } from '../data'
-import { bestEntry, cap, cmpEntries, fieldsFor, fmtDay, fmtEntry, fmtTarget, hasValues, parseRest } from '../lib'
+import { finishSession, loadSession, saveEntry, startSession, updateSession, useLive, type Block, type Entry, type Exercise } from '../data'
+import { bestEntry, cap, cmpEntries, fieldsFor, fmtDay, fmtEntry, fmtTarget, fmtClock, fmtSpan, hasValues, parseRest, sessionMs } from '../lib'
 import { Bar, Icon, NoteSheet, Sheet, toast } from '../ui'
 import { useStopwatch } from '../Stopwatch'
 import { LinkSheet } from '../LinkSheet'
@@ -21,6 +21,9 @@ export default function SessionMode() {
   const [menu, setMenu] = useState(false)
   const [noting, setNoting] = useState(false)
 
+  // por si se entra sin apretar "Empezar" (por ejemplo desde Hoy): abrir el entreno también lo arranca
+  useEffect(() => { if (Number.isFinite(sessionId)) void startSession(sessionId) }, [sessionId])
+
   const steps = useMemo<Step[]>(() => {
     if (!data) return []
     return data.tree.blocks.map((block) => {
@@ -38,7 +41,12 @@ export default function SessionMode() {
   if (data === null) return <main className="page"><p>Ese entreno ya no existe.</p><Link className="btn gap-top" to="/">Volver a Hoy</Link></main>
   const { session, tree, entries, history } = data
   const back = `/programa/${session.programId}`
-  const finish = async () => { await finishSession(session.id); toast('Entreno terminado: día tachado'); nav('/') }
+  const finish = async () => {
+    const t = await finishSession(session.id)
+    const ms = sessionMs(t)
+    toast(ms ? `Entreno terminado · ${fmtSpan(ms)}` : 'Entreno terminado: día tachado')
+    nav('/')
+  }
 
   const head = (
     <header className="pagehead">
@@ -89,7 +97,7 @@ export default function SessionMode() {
     <main className="page session">
       {head}
       <div className="sprog">
-        <p className="muted small"><strong className="num">{doneCount}</strong> de {total} series</p>
+        <p className="muted small"><strong className="num">{doneCount}</strong> de {total} series{session.startedAt && session.status !== 'done' ? <> · empezaste a las <span className="num">{fmtClock(session.startedAt)}</span></> : null}</p>
         <Bar value={doneCount} max={total} label="Series hechas" />
       </div>
 

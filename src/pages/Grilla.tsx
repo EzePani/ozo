@@ -2,13 +2,14 @@ import { Fragment, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   addWeek, bulkEditEntries, changeProgramStart, clearEntries, clearWeekData, changeProgramWeekday, copyPrevWeek, deleteProgram, getGoals, getHistory, getProgramCards, getSettings, duplicateRound, groupExercises, insertRound, loadProgram, loadRoutine, moveExercise, programHasData, removeItems, removeRound, setHeading, setRestRow,
-  removeSession, roundHasData, saveEntry, sessionHasData, setRest, todayISO, ungroupExercises, updateItems, updateRoutine, updateSession, useLive,
+  removeSession, roundHasData, startSession, saveEntry, sessionHasData, setRest, todayISO, ungroupExercises, updateItems, updateRoutine, updateSession, useLive,
   type Block, type BulkOp, type CellRef, type Entry, type Exercise, type Field, type FlatRow, type Session, type Target,
 } from '../data'
-import { FIELD_LABEL, bestEntry, cmpEntries, fieldsFor, fmtDay, fmtEntry, fmtTargetShort, hasValues, wdShort, WD_ORDER, WEEKDAYS } from '../lib'
+import { FIELD_LABEL, bestEntry, cmpEntries, fieldsFor, fmtDay, fmtEntry, fmtTargetShort, fmtClock, fmtSpan, hasValues, sessionMs, wdShort, WD_ORDER, WEEKDAYS } from '../lib'
 import { Icon, NoteSheet, PageHead, Seg, Sheet, confirmDialog, toast, toastUndo, useIsDesktop } from '../ui'
 import { CellEditor } from '../CellEditor'
 import { LinkSheet } from '../LinkSheet'
+import { DurationSheet } from '../DurationSheet'
 import { downloadIcs, googleCalendarUrl, icsFile } from '../calendar'
 import { AddExerciseSheet, ExerciseEditor, TargetEditor, cleanTarget } from './ExerciseEditor'
 
@@ -86,6 +87,7 @@ export default function Grilla() {
   const [cell, setCell] = useState<{ sessionId: number; ex: Exercise; round: number } | null>(null)
   const [exMenu, setExMenu] = useState<number | null>(null) // itemId
   const [roundMenu, setRoundMenu] = useState<{ itemId: number; round: number } | null>(null)
+  const [durOf, setDurOf] = useState<Session | null>(null)
   const [weekMenu, setWeekMenu] = useState<number | null>(null)
   const [progMenu, setProgMenu] = useState(false)
   const [editing, setEditing] = useState<FlatRow | null>(null)
@@ -208,7 +210,7 @@ export default function Grilla() {
     <main className={'page' + (desktop ? ' wide' : '')}>
       <PageHead title={<button className="titlebtn" title="Cambiar el nombre de la rutina" aria-label={`${wdShort(program.weekday)} · ${tree.routine.name}. Cambiar el nombre`} onClick={() => setRenaming(true)}>{wdShort(program.weekday)} · {tree.routine.name}<Icon name="edit" size={16} /></button>} back={`/programa?m=${program.month}`}>
         <div className="hactions">
-          {desktop && cur && <Link className="hbtn primary" to={`/sesion/${cur.id}`}><Icon name="play" size={18} />Cargar semana {curIdx + 1}</Link>}
+          {desktop && cur && <Link className="hbtn primary" to={`/sesion/${cur.id}`} onClick={() => void startSession(cur.id)}><Icon name="play" size={18} />Cargar semana {curIdx + 1}</Link>}
           {desktop && <Link className="hbtn" to={`/programa/rutina/${routineId}`}><Icon name="edit" size={18} />Editar rutina</Link>}
           {desktop && n > 0 && tree.flat.length > 0 && (
             <button className={'hbtn' + (picked ? ' primary' : '')} aria-pressed={picked != null} title="Seleccionar celdas para editarlas juntas" onClick={() => setPicked(picked ? null : new Set())}>
@@ -299,7 +301,7 @@ export default function Grilla() {
             <Link className="btn grow" to={`/programa/rutina/${routineId}`}>Editar rutina</Link>
           </div>
           {!picked && <div className="actionbar">
-            <Link className="btn primary grow" to={`/sesion/${cur.id}`}>{cur.status === 'done' ? 'Seguir cargando' : cur.date === today ? 'Empezar' : `Cargar semana ${curIdx + 1}`}</Link>
+            <Link className="btn primary grow" to={`/sesion/${cur.id}`} onClick={() => void startSession(cur.id)}>{cur.status === 'done' ? 'Seguir cargando' : cur.date === today ? 'Empezar' : `Cargar semana ${curIdx + 1}`}</Link>
           </div>}
         </>
       )}
@@ -440,6 +442,7 @@ export default function Grilla() {
                 onClick={(e) => { try { e.currentTarget.showPicker() } catch { /* sin soporte */ } }}
                 onChange={async (e) => { const d = e.target.value; if (!d) return; if (!(await sure(`Mover la semana ${wk(menuSession)} al ${fmtDay(d)}`, 'Mover'))) return; if ((await updateSession(menuSession.id, { date: d })) === 'taken') toast(`Esta rutina ya tiene una semana el ${fmtDay(d)}`) }} />
             </label>
+            <button className="mrow" onClick={() => { setDurOf(menuSession); setWeekMenu(null) }}><Icon name="timer" size={20} /><span>Duración del entreno</span><span className="mval">{sessionMs(menuSession) ? `${fmtSpan(sessionMs(menuSession)!)} ›` : menuSession.startedAt ? `Desde ${fmtClock(menuSession.startedAt)} ›` : '›'}</span></button>
             <button className="mrow" onClick={() => { setNote({ session: menuSession }); setWeekMenu(null) }}><Icon name="note" size={20} /><span>Nota del entreno</span><span className="mval">{menuSession.note ? 'Editar ›' : '›'}</span></button>
             <button className="mrow" disabled={wk(menuSession) === 1} onClick={() => { setWeekMenu(null); void copyPrev(menuSession) }}><Icon name="copy" size={20} /><span>Copiar de la semana anterior</span></button>
             <a className="mrow" href={googleCalendarUrl(menuSession, cal)} target="_blank" rel="noopener noreferrer"><Icon name="calendar" size={20} /><span>Agregar al calendario</span><span className="mval">{cal.time}</span></a>
@@ -511,6 +514,7 @@ export default function Grilla() {
         : <NoteSheet title={`Nota del entreno · sem ${wk(note.session)}`} value={note.session.note ?? ''} onSave={(t) => updateSession(note.session.id, { note: t })} onClose={() => setNote(null)} />)}
       {editing && <ExerciseEditor routineId={routineId} exercise={editing.ex} block={editing.block} onClose={() => setEditing(null)} />}
       {adding && <AddExerciseSheet tree={tree} onClose={() => setAdding(false)} />}
+      {durOf && <DurationSheet session={durOf} onClose={() => setDurOf(null)} />}
       {link && <LinkSheet url={link.linkUrl} title={link.name} onClose={() => setLink(null)} />}
     </main>
   )

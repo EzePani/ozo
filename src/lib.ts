@@ -363,3 +363,14 @@ Ejemplo:
 
 Mi rutina:
 `
+
+/** Duración de un entreno en ms, o undefined si faltan las horas o no cierran. */
+export const sessionMs = (s: { startedAt?: number; endedAt?: number }) => (s.startedAt && s.endedAt && s.endedAt > s.startedAt ? s.endedAt - s.startedAt : undefined)
+/** 5400000 → "1 h 30"; 2700000 → "45 min". */
+export function fmtSpan(ms: number) {
+  const m = Math.round(ms / 60000)
+  return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}`
+}
+export const fmtClock = (ms: number) => { const d = new Date(ms); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}` }
+/** "YYYY-MM-DD" + "HH:MM" → ms (hora local). */
+export const clockToMs = (iso: string, hhmm: string) => { const [y, m, d] = iso.split('-').map(Number); const [h, mi] = hhmm.split(':').map(Number); return new Date(y, m - 1, d, h, mi).getTime() }

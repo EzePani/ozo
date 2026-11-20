@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { isoOf, todayISO, type Goal } from '../data'
-import { bestEntry, entryFields, fmtDay, fmtDayLong, fmtEntry, monthName, streakWeeks, thisMonth } from '../lib'
+import { bestEntry, entryFields, fmtDay, fmtDayLong, fmtEntry, fmtSpan, monthName, sessionMs, streakWeeks, thisMonth } from '../lib'
 import { Bar, Icon, MonthNav, PageHead } from '../ui'
 import { GoalSheet, RoutineGoals, doneIn, monthGoal, useOverview } from '../goals'
 
@@ -28,6 +28,11 @@ export default function Progreso() {
     const best = bestEntry(es, fields)
     return best && { lib: l, best, fields }
   }).filter((r) => !!r).sort((a, b) => b.best.date.localeCompare(a.best.date)).slice(0, 8)
+
+  const timed = o.routines.map((r) => {
+    const list = o.sessions.filter((s) => s.routineId === r.id && s.status === 'done' && sessionMs(s)).sort((a, b) => a.date.localeCompare(b.date))
+    return { r, list }
+  }).filter((t) => t.list.length)
 
   return (
     <main className="page">
@@ -85,6 +90,25 @@ export default function Progreso() {
             <div className="row tightrow spread"><p className="eyebrow">Objetivos por rutina</p><button className="btn compact" disabled={!o.routines.length} onClick={() => setEdit({ scope: 'routine' })}><Icon name="plus" size={18} />Agregar</button></div>
             <RoutineGoals o={o} onEdit={(g) => setEdit({ scope: 'routine', goal: g })} />
           </section>
+          {timed.length > 0 && (
+            <section className="card stack">
+              <p className="eyebrow">⏱ Duración de los entrenos</p>
+              {timed.map(({ r, list }) => {
+                const last = list.slice(-8)
+                const max = Math.max(...last.map((s) => sessionMs(s)!))
+                const avg = list.reduce((n, s) => n + sessionMs(s)!, 0) / list.length
+                return (
+                  <div key={r.id} className="durrow">
+                    <p className="row tightrow spread"><strong>{r.name}</strong><span className="num">{fmtSpan(avg)} <span className="muted small">promedio</span></span></p>
+                    <div className="durbars" role="img" aria-label={`Últimos entrenos de ${r.name}: ${last.map((s) => `${fmtDay(s.date)} ${fmtSpan(sessionMs(s)!)}`).join(', ')}`}>
+                      {last.map((s) => <span key={s.id} className="durbar"><i style={{ height: `${Math.max(10, (sessionMs(s)! / max) * 64)}px` }} /><small className="num">{fmtSpan(sessionMs(s)!)}</small><small className="muted">{fmtDay(s.date)}</small></span>)}
+                    </div>
+                  </div>
+                )
+              })}
+              <p className="muted small">Va desde «Empezar» hasta «Terminar entreno». Se corrige desde el menú de cada semana.</p>
+            </section>
+          )}
           <section className="card stack">
             <p className="eyebrow">🏆 Récords</p>
             {records.length === 0 && <p className="muted">Aparecen al marcar series como hechas.</p>}

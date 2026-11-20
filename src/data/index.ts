@@ -541,9 +541,9 @@ export async function clearWeekData(sessionId: number): Promise<{ cleared: numbe
   const old = await db.entries.where('sessionId').equals(sessionId).toArray()
   await db.transaction('rw', db.entries, db.sessions, async () => {
     await db.entries.bulkDelete(old.map(cellKey))
-    await db.sessions.update(sessionId, { status: 'planned' })
+    await db.sessions.update(sessionId, { status: 'planned', startedAt: undefined, endedAt: undefined })
   })
-  return { cleared: old.length, undo: async () => { await db.entries.bulkPut(old); if (session) await db.sessions.update(sessionId, { status: session.status }) } }
+  return { cleared: old.length, undo: async () => { await db.entries.bulkPut(old); if (session) await db.sessions.update(sessionId, { status: session.status, startedAt: session.startedAt, endedAt: session.endedAt }) } }
 }
 
 export const sessionHasData = async (sessionId: number) => (await db.entries.where('sessionId').equals(sessionId).count()) > 0
@@ -592,7 +592,7 @@ export async function ensureTodaySession(routineId: number) {
 }
 
 /** 'taken' si la rutina ya tiene otra columna en esa fecha. */
-export async function updateSession(id: number, patch: Partial<Pick<Session, 'date' | 'status' | 'note'>>): Promise<'ok' | 'taken'> {
+export async function updateSession(id: number, patch: Partial<Pick<Session, 'date' | 'status' | 'note' | 'startedAt' | 'endedAt'>>): Promise<'ok' | 'taken'> {
   return db.transaction('rw', db.sessions, async () => {
     const s = await db.sessions.get(id)
     if (!s) return 'ok'
@@ -601,7 +601,21 @@ export async function updateSession(id: number, patch: Partial<Pick<Session, 'da
     return 'ok'
   })
 }
-export const finishSession = (id: number) => db.sessions.update(id, { status: 'done' })
+/** Marca la hora de inicio. Si ya había una de un entreno sin terminar de hace más de 6 h, se pisa (era de otro día). */
+export async function startSession(id: number) {
+  const s = await db.sessions.get(id)
+  if (!s || s.status === 'done') return
+  const now = Date.now()
+  if (s.startedAt && !s.endedAt && now - s.startedAt < 6 * 3600_000) return
+  await db.sessions.update(id, { startedAt: now, endedAt: undefined })
+}
+/** Cierra el entreno: queda tachado y se guarda la hora de fin (si no había una ya). */
+export async function finishSession(id: number): Promise<{ startedAt?: number; endedAt?: number }> {
+  const s = await db.sessions.get(id)
+  const endedAt = s?.endedAt ?? Date.now()
+  await db.sessions.update(id, { status: 'done', endedAt })
+  return { startedAt: s?.startedAt, endedAt }
+}
 
 export type EntryValues = Pick<Entry, 'weight' | 'reps' | 'durationSec' | 'distance'>
 
